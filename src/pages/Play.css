@@ -1,0 +1,231 @@
+.play-page {
+  min-height: 100vh;
+  background: #1a1a2e;
+  color: #eee;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.game-title {
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  text-shadow: 4px 4px 0 #000;
+  letter-spacing: 4px;
+}
+
+/* Level Select */
+.level-select {
+  text-align: center;
+}
+
+.level-select h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #aaa;
+}
+
+.level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.level-button {
+  padding: 16px 48px;
+  font-size: 1.2rem;
+  background: #333;
+  color: #fff;
+  border: 3px solid #555;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-family: inherit;
+}
+
+.level-button:hover {
+  background: #444;
+  border-color: #ffff00;
+}
+
+.editor-button {
+  margin-top: 24px;
+  background: #2a2a4a;
+  border-color: #666;
+}
+
+/* Game Header */
+.game-header {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+.back-button {
+  padding: 8px 16px;
+  background: #333;
+  color: #fff;
+  border: 2px solid #555;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.back-button:hover {
+  background: #444;
+  border-color: #ffff00;
+}
+
+.level-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffff00;
+}
+
+.move-counter {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+/* Game Grid */
+.game-area {
+  display: flex;
+  justify-content: center;
+}
+
+.game-grid {
+  display: grid;
+  gap: 1px;
+  background: #111;
+  padding: 1px;
+  box-shadow: 0 0 0 2px #333, 0 0 40px rgba(0,0,0,0.5);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #2a2a3a;
+}
+
+.cell.empty {
+}
+
+.entity {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: #000;
+  text-align: center;
+  line-height: 1;
+  image-rendering: pixelated;
+}
+
+.entity-baba {
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  color: #000;
+  background: #ffffff !important;
+}
+
+.entity-wall {
+  width: 100%;
+  height: 100%;
+  background: #8B4513 !important;
+}
+
+.entity-rock {
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  color: #000;
+  background: #808080 !important;
+}
+
+.entity-flag {
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  color: #000;
+  background: #ff4444 !important;
+}
+
+.entity-text {
+  width: 100%;
+  height: 100%;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+  background: #ffff00 !important;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Controls Hint */
+.controls-hint {
+  margin-top: 20px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Win Overlay */
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.win-modal {
+  background: #1a1a2e;
+  border: 4px solid #ffff00;
+  padding: 40px 60px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(255,255,0,0.3);
+}
+
+.win-modal h2 {
+  font-size: 2.5rem;
+  color: #ffff00;
+  margin-bottom: 1rem;
+  text-shadow: 3px 3px 0 #000;
+}
+
+.win-modal p {
+  font-size: 1.2rem;
+  color: #aaa;
+  margin-bottom: 2rem;
+}
+
+.win-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.win-buttons button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  background: #333;
+  color: #fff;
+  border: 2px solid #555;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.win-buttons button:hover {
+  background: #444;
+  border-color: #ffff00;
+}
