@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
-import { tick, Direction } from '../engine/movement';
+import { tick, Direction, EntityMovement } from '../engine/movement';
 import { levels, getLevelById, Level } from '../data/levels';
 import { Entity } from '../engine/entities';
 import './Play.css';
@@ -9,6 +9,7 @@ import './Play.css';
 type PlayState = 'menu' | 'playing' | 'won';
 
 const CELL_SIZE = 40;
+const ANIM_DURATION = 80;
 
 function entityColor(type: string): string {
   switch (type) {
@@ -84,6 +85,7 @@ function renderGrid(grid: Grid) {
               return (
                 <div
                   key={id}
+                  data-entity-id={id}
                   className={`entity entity-${e.type.toLowerCase()}`}
                   style={{ backgroundColor: entityColor(e.type) }}
                 >
@@ -96,6 +98,7 @@ function renderGrid(grid: Grid) {
               return (
                 <div
                   key={id}
+                  data-entity-id={id}
                   className="entity entity-text"
                   style={{ backgroundColor: entityColor(e.type) }}
                 >
@@ -133,6 +136,7 @@ export function Play() {
   const [level, setLevel] = useState<Level | null>(null);
   const [moveCount, setMoveCount] = useState(0);
   const historyRef = useRef<Grid[]>([]);
+  const animatingRef = useRef(false);
 
   // Check for level in URL
   useEffect(() => {
@@ -176,8 +180,44 @@ export function Play() {
     }
   }
 
+  function animateMovements(movements: EntityMovement[]) {
+    if (movements.length === 0) return;
+    animatingRef.current = true;
+
+    // Gap between cells = CELL_SIZE + 2px (grid gap)
+    const step = CELL_SIZE + 2;
+
+    for (const m of movements) {
+      const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
+      if (!el) continue;
+
+      const dx = (m.from.x - m.to.x) * step;
+      const dy = (m.from.y - m.to.y) * step;
+
+      // Start at old position (offset from new grid position)
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      // Force reflow then animate to new position
+      el.getBoundingClientRect();
+      el.style.transition = `transform ${ANIM_DURATION}ms steps(2, end)`;
+      el.style.transform = 'translate(0, 0)';
+    }
+
+    setTimeout(() => {
+      for (const m of movements) {
+        const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
+        if (el) {
+          el.style.transition = '';
+          el.style.transform = '';
+        }
+      }
+      animatingRef.current = false;
+    }, ANIM_DURATION);
+  }
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (gameState !== 'playing' || !grid) return;
+    if (gameState !== 'playing' || !grid || animatingRef.current) return;
 
     let dir: Direction | null = null;
     switch (e.key) {
@@ -229,6 +269,11 @@ export function Play() {
     setGrid(result.grid);
     if (result.won) {
       setGameState('won');
+    } else if (result.movements.length > 0) {
+      // Schedule animation after React renders the new grid positions
+      requestAnimationFrame(() => {
+        animateMovements(result.movements);
+      });
     }
   }, [gameState, grid, level]);
 

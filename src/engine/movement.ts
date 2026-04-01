@@ -1,7 +1,7 @@
 // Movement engine: handles player input, collision, and state transitions
 import { Grid, cloneGrid, moveEntity, removeEntity, getEntitiesAt } from './grid';
-import { Entity, Position } from './entities';
-import { evaluateRules, getPropertiesForType } from './rules';
+import { Entity, EntityType, Position } from './entities';
+import { evaluateRules, evaluateTransformations, getPropertiesForType } from './rules';
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -14,19 +14,42 @@ export function directionToOffset(dir: Direction): Position {
   }
 }
 
+export interface EntityMovement {
+  entityId: string;
+  from: Position;
+  to: Position;
+}
+
 export interface GameTickResult {
   grid: Grid;
   won: boolean;
   moved: boolean;
+  movements: EntityMovement[];
 }
 
 export function tick(grid: Grid, dir: Direction): GameTickResult {
-  const rules = evaluateRules(grid);
+  // Clone first to avoid mutating the caller's grid (needed for undo history)
+  const workGrid = cloneGrid(grid);
+
+  // Phase 1: Apply noun-is-noun transformations
+  const transformations = evaluateTransformations(workGrid);
+  if (transformations.size > 0) {
+    for (const entity of workGrid.entities.values()) {
+      if (entity.type.startsWith('TEXT_')) continue;
+      const target = transformations.get(entity.type);
+      if (target) {
+        entity.type = target as EntityType;
+      }
+    }
+  }
+
+  // Phase 2: Evaluate rules (after transformation, entity composition may have changed)
+  const rules = evaluateRules(workGrid);
   const offset = directionToOffset(dir);
 
   // Find all YOU entities
   const youEntities: Entity[] = [];
-  for (const entity of grid.entities.values()) {
+  for (const entity of workGrid.entities.values()) {
     const props = getPropertiesForType(rules, entity.type);
     if (props.isYou) {
       youEntities.push(entity);
@@ -34,13 +57,15 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
   }
 
   if (youEntities.length === 0) {
-    return { grid, won: false, moved: false };
+    const transformed = transformations.size > 0;
+    return { grid: workGrid, won: false, moved: transformed, movements: [] };
   }
 
-  const newGrid = cloneGrid(grid);
+  const newGrid = cloneGrid(workGrid);
   const moves: Array<{ entityId: string; from: Position; to: Position }> = [];
   const destroys: string[] = [];
-  let hasMoved = false;
+  const allMovements: EntityMovement[] = [];
+  let hasMoved = transformations.size > 0;
 
   // Sort YOU entities so the frontmost in the movement direction are processed first.
   // This ensures that if a front entity is blocked, entities behind it see the blockage.
@@ -77,7 +102,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isWin) {
-        return { grid: newGrid, won: true, moved: true };
+        return { grid: newGrid, won: true, moved: true, movements: [] };
       }
     }
 
@@ -147,8 +172,10 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
         } else {
           for (let i = pushChain.length - 1; i >= 0; i--) {
             for (const e of pushChain[i]) {
+              const from = { ...e.position };
               const target = { x: e.position.x + offset.x, y: e.position.y + offset.y };
               moveEntity(newGrid, e.id, target);
+              allMovements.push({ entityId: e.id, from, to: target });
             }
           }
           hasMoved = true;
@@ -183,10 +210,11 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
   for (const m of moves) {
     if (m.from.x !== m.to.x || m.from.y !== m.to.y) {
       moveEntity(newGrid, m.entityId, m.to);
+      allMovements.push({ entityId: m.entityId, from: m.from, to: m.to });
     }
   }
 
-  return { grid: newGrid, won: false, moved: hasMoved };
+  return { grid: newGrid, won: false, moved: hasMoved, movements: allMovements };
 }
 
 function isValidPosition(grid: Grid, pos: Position): boolean {
