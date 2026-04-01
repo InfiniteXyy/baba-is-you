@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
-import { tick, Direction, EntityMovement } from '../engine/movement';
+import { tick, Direction } from '../engine/movement';
 import { levels, getLevelById, Level } from '../data/levels';
 import { Entity } from '../engine/entities';
 import './Play.css';
@@ -9,27 +9,8 @@ import './Play.css';
 type PlayState = 'menu' | 'playing' | 'won';
 
 const CELL_SIZE = 40;
-const ANIM_DURATION = 120;
-
-function entityColor(type: string): string {
-  switch (type) {
-    case 'BABA': return '#ffffff';
-    case 'WALL': return '#8B4513';
-    case 'ROCK': return '#808080';
-    case 'FLAG': return '#ff4444';
-    case 'TEXT_WORD':
-    case 'TEXT_IS':
-    case 'TEXT_AND':
-    case 'TEXT_YOU':
-    case 'TEXT_WIN':
-    case 'TEXT_PUSH':
-    case 'TEXT_STOP':
-    case 'TEXT_LOVE':
-    case 'TEXT_HATE':
-      return '#ffff00';
-    default: return '#cccccc';
-  }
-}
+const GAP = 2;
+const STEP = CELL_SIZE + GAP; // pixel distance between cell origins
 
 function entityLetter(type: string, entity: Entity): string {
   if (type.startsWith('TEXT_')) {
@@ -55,76 +36,56 @@ function entityLetter(type: string, entity: Entity): string {
   }
 }
 
-function renderGrid(grid: Grid) {
-  const cells: JSX.Element[] = [];
+function renderGameGrid(grid: Grid): JSX.Element {
+  const gridW = grid.width * STEP + GAP; // +GAP for padding
+  const gridH = grid.height * STEP + GAP;
 
+  // Background cells
+  const cells: JSX.Element[] = [];
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
-      const entities = grid.cells[y][x].entities;
-      const key = `${x}-${y}`;
-
-      if (entities.length === 0) {
-        cells.push(
-          <div key={key} className="cell empty" style={{ width: CELL_SIZE, height: CELL_SIZE }} />
-        );
-      } else {
-        // Render all entities in cell, text on top
-        const nonText = entities.filter(id => {
-          const e = grid.entities.get(id);
-          return e && !e.type.startsWith('TEXT_');
-        });
-        const textEnts = entities.filter(id => {
-          const e = grid.entities.get(id);
-          return e && e.type.startsWith('TEXT_');
-        });
-
-        cells.push(
-          <div key={key} className="cell" style={{ width: CELL_SIZE, height: CELL_SIZE }}>
-            {nonText.map(id => {
-              const e = grid.entities.get(id)!;
-              return (
-                <div
-                  key={id}
-                  data-entity-id={id}
-                  className={`entity entity-${e.type.toLowerCase()}`}
-                  style={{ backgroundColor: entityColor(e.type) }}
-                >
-                  {entityLetter(e.type, e)}
-                </div>
-              );
-            })}
-            {textEnts.map(id => {
-              const e = grid.entities.get(id)!;
-              return (
-                <div
-                  key={id}
-                  data-entity-id={id}
-                  className="entity entity-text"
-                  style={{ backgroundColor: entityColor(e.type) }}
-                >
-                  {entityLetter(e.type, e)}
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
+      cells.push(
+        <div
+          key={`cell-${x}-${y}`}
+          className="cell"
+          style={{
+            position: 'absolute',
+            left: GAP + x * STEP,
+            top: GAP + y * STEP,
+            width: CELL_SIZE,
+            height: CELL_SIZE,
+          }}
+        />
+      );
     }
   }
 
-  return cells;
-}
+  // Entities — sorted so text renders on top
+  const allEntities = Array.from(grid.entities.values());
+  const nonText = allEntities.filter(e => !e.type.startsWith('TEXT_'));
+  const textEnts = allEntities.filter(e => e.type.startsWith('TEXT_'));
 
-function gridToReactGrid(grid: Grid): JSX.Element {
+  const renderEntity = (e: Entity) => {
+    const isText = e.type.startsWith('TEXT_');
+    return (
+      <div
+        key={e.id}
+        className={`entity ${isText ? 'entity-text' : `entity-${e.type.toLowerCase()}`}`}
+        style={{
+          left: GAP + e.position.x * STEP,
+          top: GAP + e.position.y * STEP,
+        }}
+      >
+        {entityLetter(e.type, e)}
+      </div>
+    );
+  };
+
   return (
-    <div
-      className="game-grid"
-      style={{
-        gridTemplateColumns: `repeat(${grid.width}, ${CELL_SIZE}px)`,
-        gridTemplateRows: `repeat(${grid.height}, ${CELL_SIZE}px)`,
-      }}
-    >
-      {renderGrid(grid)}
+    <div className="game-grid" style={{ width: gridW, height: gridH }}>
+      {cells}
+      {nonText.map(renderEntity)}
+      {textEnts.map(renderEntity)}
     </div>
   );
 }
@@ -136,49 +97,6 @@ export function Play() {
   const [level, setLevel] = useState<Level | null>(null);
   const [moveCount, setMoveCount] = useState(0);
   const historyRef = useRef<Grid[]>([]);
-  const animatingRef = useRef(false);
-  const pendingMovementsRef = useRef<EntityMovement[]>([]);
-
-  // Apply animation after React commits new grid positions to DOM
-  useLayoutEffect(() => {
-    const movements = pendingMovementsRef.current;
-    pendingMovementsRef.current = [];
-    if (movements.length === 0) return;
-
-    animatingRef.current = true;
-    const step = CELL_SIZE + 2; // cell size + grid gap
-
-    // Set entities at their OLD positions (offset from new DOM position)
-    for (const m of movements) {
-      const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
-      if (!el) continue;
-      const dx = (m.from.x - m.to.x) * step;
-      const dy = (m.from.y - m.to.y) * step;
-      el.style.transition = 'none';
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
-    }
-
-    // After browser paints the offset, animate to final position
-    requestAnimationFrame(() => {
-      for (const m of movements) {
-        const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
-        if (!el) continue;
-        el.style.transition = `transform ${ANIM_DURATION}ms ease-out`;
-        el.style.transform = 'translate(0, 0)';
-      }
-
-      setTimeout(() => {
-        for (const m of movements) {
-          const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
-          if (el) {
-            el.style.transition = '';
-            el.style.transform = '';
-          }
-        }
-        animatingRef.current = false;
-      }, ANIM_DURATION);
-    });
-  }, [grid]);
 
   // Check for level in URL
   useEffect(() => {
@@ -223,7 +141,7 @@ export function Play() {
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (gameState !== 'playing' || !grid || animatingRef.current) return;
+    if (gameState !== 'playing' || !grid) return;
 
     let dir: Direction | null = null;
     switch (e.key) {
@@ -272,8 +190,6 @@ export function Play() {
       historyRef.current = [...historyRef.current, cloneGrid(grid)];
       setMoveCount(m => m + 1);
     }
-    // Store movements for useLayoutEffect to animate after render
-    pendingMovementsRef.current = result.movements;
     setGrid(result.grid);
     if (result.won) {
       setGameState('won');
@@ -341,7 +257,7 @@ export function Play() {
       </div>
 
       <div className="game-area">
-        {gridToReactGrid(grid)}
+        {renderGameGrid(grid)}
       </div>
 
       <div className="controls-hint">

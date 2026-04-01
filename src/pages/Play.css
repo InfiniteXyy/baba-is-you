@@ -146,10 +146,9 @@
 }
 
 .game-grid {
-  display: grid;
-  gap: 2px;
+  position: relative;
   background: #0a0a1a;
-  padding: 2px;
+  padding: 0;
   border: 3px solid #222;
   box-shadow:
     0 0 0 1px #333,
@@ -159,20 +158,14 @@
 }
 
 .cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
   background: #16162a;
-}
-
-.cell.empty {
-  background: #13132a;
 }
 
 /* Entity base */
 .entity {
   position: absolute;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,15 +175,15 @@
   text-align: center;
   line-height: 1;
   border-radius: 2px;
+  transition: left 120ms ease-out, top 120ms ease-out;
+  z-index: 1;
 }
 
 /* Baba - white with slight warmth, cute pixel look */
 .entity-baba {
-  width: 88%;
-  height: 88%;
   font-size: 20px;
   color: #333;
-  background: #f8f8f0 !important;
+  background: #f8f8f0;
   border: 2px solid #ddd;
   border-radius: 4px;
   box-shadow:
@@ -200,26 +193,22 @@
 
 /* Wall - brick pattern look */
 .entity-wall {
-  width: 100%;
-  height: 100%;
-  background: #6b3a1f !important;
+  background: #6b3a1f;
   border: 1px solid #4a2510;
   box-shadow:
     inset 1px 1px 0 rgba(255,255,255,0.1),
     inset -1px -1px 0 rgba(0,0,0,0.3);
   background-image:
     linear-gradient(0deg, rgba(0,0,0,0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px) !important;
-  background-size: 10px 10px !important;
+    linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+  background-size: 10px 10px;
 }
 
 /* Rock - rounder, stone-like */
 .entity-rock {
-  width: 80%;
-  height: 80%;
   font-size: 18px;
   color: #ddd;
-  background: #5a5a6a !important;
+  background: #5a5a6a;
   border: 2px solid #444;
   border-radius: 50%;
   box-shadow:
@@ -230,11 +219,9 @@
 
 /* Flag - vibrant, with pole effect */
 .entity-flag {
-  width: 85%;
-  height: 85%;
   font-size: 18px;
   color: #fff;
-  background: #e63946 !important;
+  background: #e63946;
   border: 2px solid #b82d38;
   border-radius: 3px;
   box-shadow:
@@ -245,12 +232,10 @@
 
 /* Text entities - yellow with retro feel */
 .entity-text {
-  width: 100%;
-  height: 100%;
   font-size: 9px;
   font-weight: bold;
   color: #1a1a2e;
-  background: #ffd166 !important;
+  background: #ffd166;
   border: 1px solid #d4a830;
   white-space: nowrap;
   overflow: hidden;
@@ -259,6 +244,7 @@
   box-shadow:
     inset -1px -1px 0 #c49b28,
     inset 1px 1px 0 #ffe680;
+  z-index: 2;
 }
 
 /* Controls Hint */
