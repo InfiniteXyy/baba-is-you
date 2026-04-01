@@ -76,32 +76,63 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       continue;
     }
 
-    // Check for PUSH - if dest has PUSH property, try to push it
-    for (const dest of destEntities) {
-      const destProps = getPropertiesForType(rules, dest.type);
-      if (destProps.isPush) {
-        const pushPos = { x: newPos.x + offset.x, y: newPos.y + offset.y };
-        if (isValidPosition(newGrid, pushPos)) {
-          const pushDestEntities = getEntitiesAt(newGrid, pushPos);
-          let canPush = true;
-          for (const pde of pushDestEntities) {
-            const pdeProps = getPropertiesForType(rules, pde.type);
-            if (pdeProps.isStop || pdeProps.isPush) {
-              canPush = false;
-              break;
+    // Check for PUSH - chain push: walk in movement direction collecting all pushable entities
+    {
+      const pushChain: Entity[][] = []; // each entry = pushable entities at one cell in the chain
+      let chainPos = { ...newPos };
+      let chainBlocked = false;
+      let hasPushAtStart = false;
+
+      while (true) {
+        const cellEntities = getEntitiesAt(newGrid, chainPos);
+        const pushableInCell: Entity[] = [];
+        let cellHasStop = false;
+
+        for (const e of cellEntities) {
+          const props = getPropertiesForType(rules, e.type);
+          if (props.isStop) {
+            cellHasStop = true;
+            break;
+          }
+          if (props.isPush) {
+            pushableInCell.push(e);
+          }
+        }
+
+        if (cellHasStop) {
+          chainBlocked = true;
+          break;
+        }
+
+        if (pushableInCell.length === 0) {
+          // Empty cell (or no pushable/stop entities) — chain can resolve here
+          break;
+        }
+
+        if (pushChain.length === 0) hasPushAtStart = true;
+        pushChain.push(pushableInCell);
+
+        // Advance to next cell in the chain
+        chainPos = { x: chainPos.x + offset.x, y: chainPos.y + offset.y };
+        if (!isValidPosition(newGrid, chainPos)) {
+          chainBlocked = true;
+          break;
+        }
+      }
+
+      if (hasPushAtStart) {
+        if (chainBlocked) {
+          blocked = true;
+        } else {
+          // Move all chain entities one cell in movement direction, farthest first
+          for (let i = pushChain.length - 1; i >= 0; i--) {
+            for (const e of pushChain[i]) {
+              const target = { x: e.position.x + offset.x, y: e.position.y + offset.y };
+              moveEntity(newGrid, e.id, target);
             }
           }
-          if (canPush) {
-            // Push the entity
-            moveEntity(newGrid, dest.id, pushPos);
-            hasMoved = true;
-          } else {
-            blocked = true;
-          }
-        } else {
-          blocked = true;
+          hasMoved = true;
         }
-        break;
       }
     }
 
