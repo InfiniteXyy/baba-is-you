@@ -39,22 +39,42 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
 
   const newGrid = cloneGrid(grid);
   const moves: Array<{ entityId: string; from: Position; to: Position }> = [];
-  const destroys: string[] = []; // entity ids to destroy
+  const destroys: string[] = [];
   let hasMoved = false;
 
-  // Calculate intended moves for all YOU entities
+  // Sort YOU entities so the frontmost in the movement direction are processed first.
+  // This ensures that if a front entity is blocked, entities behind it see the blockage.
+  youEntities.sort((a, b) => {
+    if (offset.x !== 0) return (b.position.x - a.position.x) * offset.x;
+    return (b.position.y - a.position.y) * offset.y;
+  });
+
+  // Track positions occupied by blocked YOU entities so trailing ones don't overlap
+  const blockedPositions = new Set<string>();
+  const youEntityIds = new Set(youEntities.map(e => e.id));
+
   for (const you of youEntities) {
     const newPos = { x: you.position.x + offset.x, y: you.position.y + offset.y };
 
     if (!isValidPosition(newGrid, newPos)) {
+      blockedPositions.add(`${you.position.x},${you.position.y}`);
+      moves.push({ entityId: you.id, from: you.position, to: you.position });
+      continue;
+    }
+
+    // Check if target cell is occupied by a blocked YOU entity
+    if (blockedPositions.has(`${newPos.x},${newPos.y}`)) {
+      blockedPositions.add(`${you.position.x},${you.position.y}`);
       moves.push({ entityId: you.id, from: you.position, to: you.position });
       continue;
     }
 
     const destEntities = getEntitiesAt(newGrid, newPos);
+    // Exclude fellow YOU entities from obstacle checks — they're moving too
+    const nonYouDest = destEntities.filter(e => !youEntityIds.has(e.id));
 
-    // Check for WIN (YOU on WIN entity)
-    for (const dest of destEntities) {
+    // Check for WIN
+    for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isWin) {
         return { grid: newGrid, won: true, moved: true };
@@ -63,7 +83,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
 
     // Check for STOP
     let blocked = false;
-    for (const dest of destEntities) {
+    for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isStop) {
         blocked = true;
@@ -72,23 +92,26 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     }
 
     if (blocked) {
+      blockedPositions.add(`${you.position.x},${you.position.y}`);
       moves.push({ entityId: you.id, from: you.position, to: you.position });
       continue;
     }
 
-    // Check for PUSH - chain push: walk in movement direction collecting all pushable entities
+    // Chain push: walk in movement direction collecting all pushable non-YOU entities
     {
-      const pushChain: Entity[][] = []; // each entry = pushable entities at one cell in the chain
+      const pushChain: Entity[][] = [];
       let chainPos = { ...newPos };
       let chainBlocked = false;
       let hasPushAtStart = false;
 
       while (true) {
         const cellEntities = getEntitiesAt(newGrid, chainPos);
+        // Only consider non-YOU entities for push chains
+        const nonYouCell = cellEntities.filter(e => !youEntityIds.has(e.id));
         const pushableInCell: Entity[] = [];
         let cellHasStop = false;
 
-        for (const e of cellEntities) {
+        for (const e of nonYouCell) {
           const props = getPropertiesForType(rules, e.type);
           if (props.isStop) {
             cellHasStop = true;
@@ -105,14 +128,12 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
         }
 
         if (pushableInCell.length === 0) {
-          // Empty cell (or no pushable/stop entities) — chain can resolve here
           break;
         }
 
         if (pushChain.length === 0) hasPushAtStart = true;
         pushChain.push(pushableInCell);
 
-        // Advance to next cell in the chain
         chainPos = { x: chainPos.x + offset.x, y: chainPos.y + offset.y };
         if (!isValidPosition(newGrid, chainPos)) {
           chainBlocked = true;
@@ -124,7 +145,6 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
         if (chainBlocked) {
           blocked = true;
         } else {
-          // Move all chain entities one cell in movement direction, farthest first
           for (let i = pushChain.length - 1; i >= 0; i--) {
             for (const e of pushChain[i]) {
               const target = { x: e.position.x + offset.x, y: e.position.y + offset.y };
@@ -137,15 +157,15 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     }
 
     if (blocked) {
+      blockedPositions.add(`${you.position.x},${you.position.y}`);
       moves.push({ entityId: you.id, from: you.position, to: you.position });
       continue;
     }
 
     // Check for LOVE/HATE interactions
-    for (const dest of destEntities) {
+    for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isLove || destProps.isHate) {
-        // Destroy the other entity
         destroys.push(dest.id);
       }
     }
