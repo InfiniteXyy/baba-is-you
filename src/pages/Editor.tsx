@@ -82,6 +82,8 @@ function entityLetter(type: string, entity?: Entity): string {
 export function Editor() {
   const navigate = useNavigate();
   const [grid, setGrid] = useState<Grid>(() => createGrid(DEFAULT_WIDTH, DEFAULT_HEIGHT));
+  const [gridWidth, setGridWidth] = useState(DEFAULT_WIDTH);
+  const [gridHeight, setGridHeight] = useState(DEFAULT_HEIGHT);
   const [selectedTool, setSelectedTool] = useState<PlaceTool>('BABA');
   const [levelName, setLevelName] = useState('My Level');
   const [isPainting, setIsPainting] = useState(false);
@@ -99,6 +101,18 @@ export function Editor() {
     };
     localStorage.setItem('editor-grid', JSON.stringify(data));
   }, [grid, levelName]);
+
+  function resizeGrid(newWidth: number, newHeight: number) {
+    const newGrid = createGrid(newWidth, newHeight);
+    for (const entity of grid.entities.values()) {
+      if (entity.position.x < newWidth && entity.position.y < newHeight) {
+        addEntity(newGrid, { ...entity });
+      }
+    }
+    setGrid(newGrid);
+    setGridWidth(newWidth);
+    setGridHeight(newHeight);
+  }
 
   function getCellFromEvent(e: React.MouseEvent): { x: number; y: number } | null {
     if (!gridRef.current) return null;
@@ -227,6 +241,8 @@ export function Editor() {
         addEntity(newGrid, entity);
       }
       setGrid(newGrid);
+      setGridWidth(data.width);
+      setGridHeight(data.height);
       setLevelName(data.name || 'My Level');
     } catch (e) {
       alert('Invalid level JSON');
@@ -299,6 +315,34 @@ export function Editor() {
           />
         </div>
         <div className="topbar-right">
+          <label className="grid-size-label">
+            W
+            <input
+              type="number"
+              className="grid-size-input"
+              min={5}
+              max={30}
+              value={gridWidth}
+              onChange={e => {
+                const v = Math.max(5, Math.min(30, Number(e.target.value)));
+                resizeGrid(v, gridHeight);
+              }}
+            />
+          </label>
+          <label className="grid-size-label">
+            H
+            <input
+              type="number"
+              className="grid-size-input"
+              min={5}
+              max={20}
+              value={gridHeight}
+              onChange={e => {
+                const v = Math.max(5, Math.min(20, Number(e.target.value)));
+                resizeGrid(gridWidth, v);
+              }}
+            />
+          </label>
           <button className="editor-btn" onClick={handleSave}>Save JSON</button>
           <button className="editor-btn" onClick={handleLoad}>Load JSON</button>
           <button className="editor-btn play-btn" onClick={handlePlay}>Play</button>
