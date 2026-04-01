@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
 import { tick, Direction, EntityMovement } from '../engine/movement';
@@ -9,7 +9,7 @@ import './Play.css';
 type PlayState = 'menu' | 'playing' | 'won';
 
 const CELL_SIZE = 40;
-const ANIM_DURATION = 80;
+const ANIM_DURATION = 120;
 
 function entityColor(type: string): string {
   switch (type) {
@@ -137,6 +137,48 @@ export function Play() {
   const [moveCount, setMoveCount] = useState(0);
   const historyRef = useRef<Grid[]>([]);
   const animatingRef = useRef(false);
+  const pendingMovementsRef = useRef<EntityMovement[]>([]);
+
+  // Apply animation after React commits new grid positions to DOM
+  useLayoutEffect(() => {
+    const movements = pendingMovementsRef.current;
+    pendingMovementsRef.current = [];
+    if (movements.length === 0) return;
+
+    animatingRef.current = true;
+    const step = CELL_SIZE + 2; // cell size + grid gap
+
+    // Set entities at their OLD positions (offset from new DOM position)
+    for (const m of movements) {
+      const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
+      if (!el) continue;
+      const dx = (m.from.x - m.to.x) * step;
+      const dy = (m.from.y - m.to.y) * step;
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+
+    // After browser paints the offset, animate to final position
+    requestAnimationFrame(() => {
+      for (const m of movements) {
+        const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
+        if (!el) continue;
+        el.style.transition = `transform ${ANIM_DURATION}ms ease-out`;
+        el.style.transform = 'translate(0, 0)';
+      }
+
+      setTimeout(() => {
+        for (const m of movements) {
+          const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
+          if (el) {
+            el.style.transition = '';
+            el.style.transform = '';
+          }
+        }
+        animatingRef.current = false;
+      }, ANIM_DURATION);
+    });
+  }, [grid]);
 
   // Check for level in URL
   useEffect(() => {
@@ -178,42 +220,6 @@ export function Play() {
     } catch (e) {
       console.error('Failed to load editor grid:', e);
     }
-  }
-
-  function animateMovements(movements: EntityMovement[]) {
-    if (movements.length === 0) return;
-    animatingRef.current = true;
-
-    // Gap between cells = CELL_SIZE + 2px (grid gap)
-    const step = CELL_SIZE + 2;
-
-    for (const m of movements) {
-      const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
-      if (!el) continue;
-
-      const dx = (m.from.x - m.to.x) * step;
-      const dy = (m.from.y - m.to.y) * step;
-
-      // Start at old position (offset from new grid position)
-      el.style.transition = 'none';
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
-
-      // Force reflow then animate to new position
-      el.getBoundingClientRect();
-      el.style.transition = `transform ${ANIM_DURATION}ms steps(2, end)`;
-      el.style.transform = 'translate(0, 0)';
-    }
-
-    setTimeout(() => {
-      for (const m of movements) {
-        const el = document.querySelector(`[data-entity-id="${m.entityId}"]`) as HTMLElement;
-        if (el) {
-          el.style.transition = '';
-          el.style.transform = '';
-        }
-      }
-      animatingRef.current = false;
-    }, ANIM_DURATION);
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -266,14 +272,11 @@ export function Play() {
       historyRef.current = [...historyRef.current, cloneGrid(grid)];
       setMoveCount(m => m + 1);
     }
+    // Store movements for useLayoutEffect to animate after render
+    pendingMovementsRef.current = result.movements;
     setGrid(result.grid);
     if (result.won) {
       setGameState('won');
-    } else if (result.movements.length > 0) {
-      // Schedule animation after React renders the new grid positions
-      requestAnimationFrame(() => {
-        animateMovements(result.movements);
-      });
     }
   }, [gameState, grid, level]);
 

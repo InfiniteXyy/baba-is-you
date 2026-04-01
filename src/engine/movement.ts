@@ -28,22 +28,30 @@ export interface GameTickResult {
 }
 
 export function tick(grid: Grid, dir: Direction): GameTickResult {
-  // Clone first to avoid mutating the caller's grid (needed for undo history)
   const workGrid = cloneGrid(grid);
 
-  // Phase 1: Apply noun-is-noun transformations
+  // Phase 1: Revert any previous transformations to get true entity types
+  for (const entity of workGrid.entities.values()) {
+    if (entity.originalType) {
+      entity.type = entity.originalType;
+      delete entity.originalType;
+    }
+  }
+
+  // Phase 2: Evaluate and apply current transformations (pre-movement)
   const transformations = evaluateTransformations(workGrid);
   if (transformations.size > 0) {
     for (const entity of workGrid.entities.values()) {
       if (entity.type.startsWith('TEXT_')) continue;
       const target = transformations.get(entity.type);
       if (target) {
+        entity.originalType = entity.type;
         entity.type = target as EntityType;
       }
     }
   }
 
-  // Phase 2: Evaluate rules (after transformation, entity composition may have changed)
+  // Phase 3: Evaluate rules (after transformation, entity composition may have changed)
   const rules = evaluateRules(workGrid);
   const offset = directionToOffset(dir);
 
@@ -211,6 +219,25 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     if (m.from.x !== m.to.x || m.from.y !== m.to.y) {
       moveEntity(newGrid, m.entityId, m.to);
       allMovements.push({ entityId: m.entityId, from: m.from, to: m.to });
+    }
+  }
+
+  // Phase 4: Re-evaluate transformations after movement (pushes may have broken rules)
+  for (const entity of newGrid.entities.values()) {
+    if (entity.originalType) {
+      entity.type = entity.originalType;
+      delete entity.originalType;
+    }
+  }
+  const postTransformations = evaluateTransformations(newGrid);
+  if (postTransformations.size > 0) {
+    for (const entity of newGrid.entities.values()) {
+      if (entity.type.startsWith('TEXT_')) continue;
+      const target = postTransformations.get(entity.type);
+      if (target) {
+        entity.originalType = entity.type;
+        entity.type = target as EntityType;
+      }
     }
   }
 

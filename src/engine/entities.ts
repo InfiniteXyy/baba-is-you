@@ -34,6 +34,8 @@ export interface Entity {
   position: Position;
   // For TEXT_WORD entities, the actual word value
   word?: TextWord;
+  // Set when entity has been transformed by a noun-is-noun rule
+  originalType?: EntityType;
 }
 
 export interface Position {
