@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -9,10 +11,11 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Courier New', monospace;
-  background: #1a1a2e;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  background: #0f0f23;
   color: #eee;
   image-rendering: pixelated;
+  -webkit-font-smoothing: none;
 }
 
 a {
@@ -21,4 +24,22 @@ a {
 
 button {
   font-family: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f0f23;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

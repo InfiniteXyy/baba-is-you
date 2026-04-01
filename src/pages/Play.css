@@ -1,94 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 .play-page {
   min-height: 100vh;
-  background: #1a1a2e;
+  background: #0f0f23;
   color: #eee;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 20px;
-}
-
-.game-title {
-  font-size: 3rem;
-  margin-bottom: 2rem;
-  text-shadow: 4px 4px 0 #000;
-  letter-spacing: 4px;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
 }
 
 /* Level Select */
+.game-title {
+  font-size: 2.4rem;
+  margin-bottom: 0.5rem;
+  color: #ff6b6b;
+  text-shadow:
+    3px 3px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    0 0 20px rgba(255, 107, 107, 0.4);
+  letter-spacing: 2px;
+}
+
+.game-subtitle {
+  font-size: 0.7rem;
+  color: #888;
+  margin-bottom: 2rem;
+  letter-spacing: 1px;
+}
+
 .level-select {
   text-align: center;
 }
 
 .level-select h2 {
   margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  font-size: 1rem;
   color: #aaa;
 }
 
 .level-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .level-button {
-  padding: 16px 48px;
-  font-size: 1.2rem;
-  background: #333;
-  color: #fff;
-  border: 3px solid #555;
+  padding: 14px 40px;
+  font-size: 0.8rem;
+  background: #1a1a3e;
+  color: #ddd;
+  border: 2px solid #333;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: all 0.15s;
   font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.level-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  transition: left 0.3s;
+}
+
+.level-button:hover::before {
+  left: 100%;
 }
 
 .level-button:hover {
-  background: #444;
-  border-color: #ffff00;
+  background: #252550;
+  border-color: #ff6b6b;
+  color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(255, 107, 107, 0.2);
 }
 
 .editor-button {
-  margin-top: 24px;
-  background: #2a2a4a;
-  border-color: #666;
+  margin-top: 20px;
+  background: #1a2a3e;
+  border-color: #445;
+}
+
+.editor-button:hover {
+  border-color: #6b9bff;
+  box-shadow: 0 0 15px rgba(107, 155, 255, 0.2);
 }
 
 /* Game Header */
 .game-header {
   width: 100%;
-  max-width: 600px;
+  max-width: 640px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 0 8px;
 }
 
 .back-button {
-  padding: 8px 16px;
-  background: #333;
-  color: #fff;
-  border: 2px solid #555;
+  padding: 6px 14px;
+  background: #1a1a3e;
+  color: #ddd;
+  border: 2px solid #333;
   cursor: pointer;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.15s;
 }
 
 .back-button:hover {
-  background: #444;
-  border-color: #ffff00;
+  background: #252550;
+  border-color: #ff6b6b;
+  color: #fff;
 }
 
 .level-name {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   font-weight: bold;
-  color: #ffff00;
+  color: #ff6b6b;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 }
 
 .move-counter {
-  font-size: 0.9rem;
-  color: #aaa;
+  font-size: 0.65rem;
+  color: #888;
 }
 
 /* Game Grid */
@@ -99,10 +147,15 @@
 
 .game-grid {
   display: grid;
-  gap: 1px;
-  background: #111;
-  padding: 1px;
-  box-shadow: 0 0 0 2px #333, 0 0 40px rgba(0,0,0,0.5);
+  gap: 2px;
+  background: #0a0a1a;
+  padding: 2px;
+  border: 3px solid #222;
+  box-shadow:
+    0 0 0 1px #333,
+    0 0 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 30px rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
 }
 
 .cell {
@@ -110,12 +163,14 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  background: #2a2a3a;
+  background: #16162a;
 }
 
 .cell.empty {
+  background: #13132a;
 }
 
+/* Entity base */
 .entity {
   position: absolute;
   display: flex;
@@ -126,106 +181,166 @@
   color: #000;
   text-align: center;
   line-height: 1;
-  image-rendering: pixelated;
+  border-radius: 2px;
+  transition: transform 0.08s ease-out;
 }
 
+/* Baba - white with slight warmth, cute pixel look */
 .entity-baba {
-  width: 100%;
-  height: 100%;
-  font-size: 24px;
-  color: #000;
-  background: #ffffff !important;
+  width: 88%;
+  height: 88%;
+  font-size: 20px;
+  color: #333;
+  background: #f8f8f0 !important;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  box-shadow:
+    inset -2px -2px 0 #ccc,
+    inset 2px 2px 0 #fff;
 }
 
+/* Wall - brick pattern look */
 .entity-wall {
   width: 100%;
   height: 100%;
-  background: #8B4513 !important;
+  background: #6b3a1f !important;
+  border: 1px solid #4a2510;
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,0.1),
+    inset -1px -1px 0 rgba(0,0,0,0.3);
+  background-image:
+    linear-gradient(0deg, rgba(0,0,0,0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px) !important;
+  background-size: 10px 10px !important;
 }
 
+/* Rock - rounder, stone-like */
 .entity-rock {
-  width: 100%;
-  height: 100%;
-  font-size: 20px;
-  color: #000;
-  background: #808080 !important;
+  width: 80%;
+  height: 80%;
+  font-size: 18px;
+  color: #ddd;
+  background: #5a5a6a !important;
+  border: 2px solid #444;
+  border-radius: 50%;
+  box-shadow:
+    inset -2px -2px 0 #3a3a4a,
+    inset 2px 2px 0 #7a7a8a,
+    0 2px 4px rgba(0,0,0,0.4);
 }
 
+/* Flag - vibrant, with pole effect */
 .entity-flag {
-  width: 100%;
-  height: 100%;
-  font-size: 20px;
-  color: #000;
-  background: #ff4444 !important;
+  width: 85%;
+  height: 85%;
+  font-size: 18px;
+  color: #fff;
+  background: #e63946 !important;
+  border: 2px solid #b82d38;
+  border-radius: 3px;
+  box-shadow:
+    inset -2px -2px 0 #b82d38,
+    inset 2px 2px 0 #ff6b6b,
+    0 0 8px rgba(230, 57, 70, 0.3);
 }
 
+/* Text entities - yellow with retro feel */
 .entity-text {
   width: 100%;
   height: 100%;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: bold;
-  color: #000;
-  background: #ffff00 !important;
+  color: #1a1a2e;
+  background: #ffd166 !important;
+  border: 1px solid #d4a830;
   white-space: nowrap;
   overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow:
+    inset -1px -1px 0 #c49b28,
+    inset 1px 1px 0 #ffe680;
 }
 
 /* Controls Hint */
 .controls-hint {
   margin-top: 20px;
-  color: #666;
-  font-size: 0.9rem;
+  color: #555;
+  font-size: 0.6rem;
+  letter-spacing: 1px;
 }
 
 /* Win Overlay */
 .win-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .win-modal {
-  background: #1a1a2e;
-  border: 4px solid #ffff00;
+  background: #1a1a3e;
+  border: 3px solid #ffd166;
   padding: 40px 60px;
   text-align: center;
-  box-shadow: 0 0 60px rgba(255,255,0,0.3);
+  box-shadow:
+    0 0 80px rgba(255, 209, 102, 0.2),
+    0 0 0 1px rgba(255, 209, 102, 0.1);
+  border-radius: 4px;
+  animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .win-modal h2 {
-  font-size: 2.5rem;
-  color: #ffff00;
+  font-size: 1.8rem;
+  color: #ffd166;
   margin-bottom: 1rem;
-  text-shadow: 3px 3px 0 #000;
+  text-shadow:
+    2px 2px 0 #000,
+    0 0 20px rgba(255, 209, 102, 0.4);
 }
 
 .win-modal p {
-  font-size: 1.2rem;
+  font-size: 0.8rem;
   color: #aaa;
   margin-bottom: 2rem;
 }
 
 .win-buttons {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   justify-content: center;
 }
 
 .win-buttons button {
-  padding: 12px 24px;
-  font-size: 1rem;
-  background: #333;
-  color: #fff;
-  border: 2px solid #555;
+  padding: 10px 20px;
+  font-size: 0.7rem;
+  background: #252550;
+  color: #ddd;
+  border: 2px solid #444;
   cursor: pointer;
   font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.15s;
 }
 
 .win-buttons button:hover {
-  background: #444;
-  border-color: #ffff00;
+  background: #303060;
+  border-color: #ffd166;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.2);
 }

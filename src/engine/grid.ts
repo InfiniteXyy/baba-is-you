@@ -86,7 +86,12 @@ export function cloneGrid(grid: Grid): Grid {
     }
     newCells.push(row);
   }
-  const newEntities = new Map(grid.entities);
+  const newEntities = new Map(
+    Array.from(grid.entities.entries()).map(([id, entity]) => [
+      id,
+      { ...entity, position: { ...entity.position } },
+    ])
+  );
   return { width: grid.width, height: grid.height, cells: newCells, entities: newEntities };
 }
 

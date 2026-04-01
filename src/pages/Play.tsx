@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Grid, createGrid, addEntity } from '../engine/grid';
+import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
 import { tick, Direction } from '../engine/movement';
 import { levels, getLevelById, Level } from '../data/levels';
 import { Entity } from '../engine/entities';
@@ -132,6 +132,7 @@ export function Play() {
   const [grid, setGrid] = useState<Grid | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [moveCount, setMoveCount] = useState(0);
+  const historyRef = useRef<Grid[]>([]);
 
   // Check for level in URL
   useEffect(() => {
@@ -147,8 +148,9 @@ export function Play() {
   function startLevel(lvl: Level) {
     const g = createGrid(lvl.width, lvl.height);
     for (const entity of lvl.entities) {
-      addEntity(g, entity);
+      addEntity(g, { ...entity, position: { ...entity.position } });
     }
+    historyRef.current = [];
     setGrid(g);
     setLevel(lvl);
     setMoveCount(0);
@@ -199,6 +201,16 @@ export function Play() {
       case 'D':
         dir = 'right';
         break;
+      case 'z':
+      case 'Z':
+        e.preventDefault();
+        if (historyRef.current.length > 0) {
+          const prev = historyRef.current[historyRef.current.length - 1];
+          historyRef.current = historyRef.current.slice(0, -1);
+          setGrid(prev);
+          setMoveCount(m => Math.max(0, m - 1));
+        }
+        return;
       case 'r':
       case 'R':
         // Restart level
@@ -210,10 +222,11 @@ export function Play() {
 
     e.preventDefault();
     const result = tick(grid, dir);
-    setGrid(result.grid);
     if (result.moved) {
+      historyRef.current = [...historyRef.current, cloneGrid(grid)];
       setMoveCount(m => m + 1);
     }
+    setGrid(result.grid);
     if (result.won) {
       setGameState('won');
     }
@@ -236,6 +249,7 @@ export function Play() {
     return (
       <div className="play-page">
         <h1 className="game-title">Baba Is You</h1>
+        <p className="game-subtitle">A puzzle game where rules are what you make of them</p>
         <div className="level-select">
           <h2>Select Level</h2>
           <div className="level-list">
@@ -283,7 +297,7 @@ export function Play() {
       </div>
 
       <div className="controls-hint">
-        Arrow keys / WASD to move &bull; R to restart
+        Arrow keys / WASD to move &bull; Z to undo &bull; R to restart
       </div>
 
       {gameState === 'won' && (

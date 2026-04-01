@@ -41,90 +41,125 @@ function propertyNameFromWord(word: TextWord): PropertyName | null {
   }
 }
 
+// Extract a property keyword from an entity, handling both dedicated property types
+// (TEXT_YOU, TEXT_WIN, etc.) and TEXT_WORD entities with property keywords.
+function getPropertyFromEntity(entity: Entity): TextWord | null {
+  switch (entity.type) {
+    case 'TEXT_YOU': return 'YOU';
+    case 'TEXT_WIN': return 'WIN';
+    case 'TEXT_PUSH': return 'PUSH';
+    case 'TEXT_STOP': return 'STOP';
+    case 'TEXT_LOVE': return 'LOVE';
+    case 'TEXT_HATE': return 'HATE';
+  }
+  if (entity.type === 'TEXT_WORD' && entity.word && PROPERTY_KEYWORDS.includes(entity.word)) {
+    return entity.word;
+  }
+  return null;
+}
+
 function textWordToEntityType(word: TextWord): string {
   return word; // BABA, WALL, ROCK, FLAG
 }
 
-export function evaluateRules(grid: Grid): RuleSet {
-  const rules = new Map<string, EffectiveProperties>(); // subject word -> accumulated props
+// Scan a single line (horizontal or vertical) for "WORD IS PROPERTY [AND PROPERTY...]" patterns
+function scanLine(
+  grid: Grid,
+  startX: number,
+  startY: number,
+  dx: number,
+  dy: number,
+  length: number,
+  rules: Map<string, EffectiveProperties>
+): void {
+  let i = 0;
+  while (i < length) {
+    const x = startX + i * dx;
+    const y = startY + i * dy;
+    const cellEntities = getEntitiesAt(grid, { x, y });
 
-  // Scan each row for "WORD IS WORD [AND WORD...]" patterns
-  for (let y = 0; y < grid.height; y++) {
-    let x = 0;
-    while (x < grid.width) {
-      const cellEntities = getEntitiesAt(grid, { x, y });
-
-      // Get text entities by type
-      const textWordEntities = cellEntities.filter(e => e.type === 'TEXT_WORD' && e.word);
-      const textIsEntities = cellEntities.filter(e => e.type === 'TEXT_IS');
-
-      // Need at least a WORD + IS
-      if (textWordEntities.length === 0 || textIsEntities.length === 0) {
-        x++;
-        continue;
-      }
-
-      const subjectWord = textWordEntities[0].word!;
-      const subjectType = textWordToEntityType(subjectWord);
-
-      // Find all predicate words after IS (scan rightward)
-      const predicates: TextWord[] = [];
-      let scanX = x + 1;
-
-      // Move past the IS entity
-      while (scanX < grid.width) {
-        const scanCell = getEntitiesAt(grid, { x: scanX, y });
-        const hasAnd = scanCell.some(e => e.type === 'TEXT_AND');
-        const hasIs = scanCell.some(e => e.type === 'TEXT_IS');
-        const wordEntity = scanCell.find(e => e.type === 'TEXT_WORD' && e.word);
-
-        if (hasAnd) {
-          scanX++;
-          continue;
-        }
-        if (hasIs) {
-          // Hit another IS, stop scanning predicates
-          break;
-        }
-        if (wordEntity) {
-          const w = wordEntity.word!;
-          if (PROPERTY_KEYWORDS.includes(w)) {
-            predicates.push(w);
-          } else {
-            // Could be another subject, stop
-            break;
-          }
-        } else {
-          // Empty cell or non-text entity, stop
-          break;
-        }
-        scanX++;
-      }
-
-      if (predicates.length > 0) {
-        // Apply predicates to subject
-        if (!rules.has(subjectType)) {
-          rules.set(subjectType, { ...EMPTY_PROPS });
-        }
-        const props = rules.get(subjectType)!;
-        for (const pred of predicates) {
-          const propName = propertyNameFromWord(pred);
-          if (propName) {
-            (props as any)[propName] = true;
-          }
-        }
-      }
-
-      x = scanX;
+    const textWordEntity = cellEntities.find(e => e.type === 'TEXT_WORD' && e.word);
+    if (!textWordEntity) {
+      i++;
+      continue;
     }
+
+    // Check if next cell has TEXT_IS
+    const ni = i + 1;
+    if (ni >= length) { i++; continue; }
+    const nextCell = getEntitiesAt(grid, { x: startX + ni * dx, y: startY + ni * dy });
+    const hasIs = nextCell.some(e => e.type === 'TEXT_IS');
+    if (!hasIs) {
+      i++;
+      continue;
+    }
+
+    const subjectWord = textWordEntity.word!;
+    const subjectType = textWordToEntityType(subjectWord);
+
+    const predicates: TextWord[] = [];
+    let si = i + 2;
+
+    while (si < length) {
+      const sx = startX + si * dx;
+      const sy = startY + si * dy;
+      const scanCell = getEntitiesAt(grid, { x: sx, y: sy });
+      const hasAnd = scanCell.some(e => e.type === 'TEXT_AND');
+      const hasIsNext = scanCell.some(e => e.type === 'TEXT_IS');
+
+      if (hasAnd) { si++; continue; }
+      if (hasIsNext) { break; }
+
+      const propertyEntity = scanCell.find(e => getPropertyFromEntity(e) !== null);
+      if (propertyEntity) {
+        predicates.push(getPropertyFromEntity(propertyEntity)!);
+      } else {
+        break;
+      }
+      si++;
+    }
+
+    if (predicates.length > 0) {
+      if (!rules.has(subjectType)) {
+        rules.set(subjectType, { ...EMPTY_PROPS });
+      }
+      const props = rules.get(subjectType)!;
+      for (const pred of predicates) {
+        const propName = propertyNameFromWord(pred);
+        if (propName) {
+          (props as any)[propName] = true;
+        }
+      }
+    }
+
+    i = si;
+  }
+}
+
+export function evaluateRules(grid: Grid): RuleSet {
+  const rules = new Map<string, EffectiveProperties>();
+
+  // Scan each row (horizontal, left-to-right)
+  for (let y = 0; y < grid.height; y++) {
+    scanLine(grid, 0, y, 1, 0, grid.width, rules);
+  }
+
+  // Scan each column (vertical, top-to-bottom)
+  for (let x = 0; x < grid.width; x++) {
+    scanLine(grid, x, 0, 0, 1, grid.height, rules);
   }
 
   return rules;
 }
 
-// Get properties for an entity type from the rule set
+// Get properties for an entity type from the rule set.
+// Text entities are always pushable — this is a core game mechanic.
 export function getPropertiesForType(rules: RuleSet, type: string): EffectiveProperties {
-  return rules.get(type) ?? { ...EMPTY_PROPS };
+  const props = rules.get(type) ?? { ...EMPTY_PROPS };
+  if (type.startsWith('TEXT_')) {
+    return { ...props, isPush: true };
+  }
+  return props;
 }
 
 // Get all entities that have a given property
