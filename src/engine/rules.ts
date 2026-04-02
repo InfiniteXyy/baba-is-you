@@ -2,7 +2,7 @@
 import { Grid, getEntitiesAt } from './grid';
 import { Entity, TextWord } from './entities';
 
-export type PropertyName = 'isYou' | 'isWin' | 'isPush' | 'isStop' | 'isLove' | 'isHate' | 'isKill';
+export type PropertyName = 'isYou' | 'isWin' | 'isPush' | 'isStop' | 'isLove' | 'isHate' | 'isKill' | 'isDefeat';
 
 export interface EffectiveProperties {
   isYou: boolean;
@@ -12,6 +12,7 @@ export interface EffectiveProperties {
   isLove: boolean;
   isHate: boolean;
   isKill: boolean;
+  isDefeat: boolean;
 }
 
 export type RuleSet = Map<string, EffectiveProperties>; // entityType -> properties
@@ -24,13 +25,14 @@ const EMPTY_PROPS: EffectiveProperties = {
   isLove: false,
   isHate: false,
   isKill: false,
+  isDefeat: false,
 };
 
 // Entity names that can appear as subject OR predicate (noun-is-noun transformation)
-export const ENTITY_KEYWORDS: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG'];
+export const ENTITY_KEYWORDS: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB'];
 
 // Keywords that can appear as the predicate of a rule
-const PROPERTY_KEYWORDS: TextWord[] = ['YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE'];
+const PROPERTY_KEYWORDS: TextWord[] = ['YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT'];
 
 function propertyNameFromWord(word: TextWord): PropertyName | null {
   switch (word) {
@@ -40,6 +42,7 @@ function propertyNameFromWord(word: TextWord): PropertyName | null {
     case 'STOP': return 'isStop';
     case 'LOVE': return 'isLove';
     case 'HATE': return 'isHate';
+    case 'DEFEAT': return 'isDefeat';
     default: return null;
   }
 }
@@ -54,6 +57,7 @@ function getPropertyFromEntity(entity: Entity): TextWord | null {
     case 'TEXT_STOP': return 'STOP';
     case 'TEXT_LOVE': return 'LOVE';
     case 'TEXT_HATE': return 'HATE';
+    case 'TEXT_DEFEAT': return 'DEFEAT';
   }
   if (entity.type === 'TEXT_WORD' && entity.word && PROPERTY_KEYWORDS.includes(entity.word)) {
     return entity.word;

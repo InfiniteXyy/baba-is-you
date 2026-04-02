@@ -239,6 +239,11 @@
   border-radius: 2px;
 }
 
+.editor-entity-sprite {
+  background-color: transparent;
+  image-rendering: pixelated;
+}
+
 .editor-entity-baba {
   font-size: 16px;
   color: #333;

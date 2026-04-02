@@ -3,16 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
 import { tick, Direction } from '../engine/movement';
 import { levels, getLevelById, Level } from '../data/levels';
+import { parseCommunityLevel, CommunityLevel } from '../data/communityLevel';
 import { Entity } from '../engine/entities';
+import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
 import './Play.css';
 
 type PlayState = 'menu' | 'playing' | 'won';
 
 const CELL_SIZE = 40;
 const GAP = 2;
-const STEP = CELL_SIZE + GAP; // pixel distance between cell origins
+const STEP = CELL_SIZE + GAP;
 
-function entityLetter(type: string, entity: Entity): string {
+function entityFallbackLabel(type: string, entity: Entity): string {
   if (type.startsWith('TEXT_')) {
     switch (type) {
       case 'TEXT_WORD': return entity.word || '?';
@@ -24,7 +26,8 @@ function entityLetter(type: string, entity: Entity): string {
       case 'TEXT_STOP': return 'STOP';
       case 'TEXT_LOVE': return 'LOVE';
       case 'TEXT_HATE': return 'HATE';
-      default: return '?';
+      case 'TEXT_DEFEAT': return 'DEFEAT';
+      default: return type.slice(5);
     }
   }
   switch (type) {
@@ -32,15 +35,15 @@ function entityLetter(type: string, entity: Entity): string {
     case 'WALL': return '';
     case 'ROCK': return 'R';
     case 'FLAG': return 'F';
-    default: return '?';
+    case 'CRAB': return 'C';
+    default: return type.charAt(0);
   }
 }
 
-function renderGameGrid(grid: Grid): JSX.Element {
-  const gridW = grid.width * STEP + GAP; // +GAP for padding
+function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null): JSX.Element {
+  const gridW = grid.width * STEP + GAP;
   const gridH = grid.height * STEP + GAP;
 
-  // Background cells
   const cells: JSX.Element[] = [];
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
@@ -60,23 +63,29 @@ function renderGameGrid(grid: Grid): JSX.Element {
     }
   }
 
-  // Entities — sorted so text renders on top
   const allEntities = Array.from(grid.entities.values());
   const nonText = allEntities.filter(e => !e.type.startsWith('TEXT_'));
   const textEnts = allEntities.filter(e => e.type.startsWith('TEXT_'));
 
   const renderEntity = (e: Entity) => {
-    const isText = e.type.startsWith('TEXT_');
+    const spriteUrl = spriteSheet ? getSpriteDataUrl(spriteSheet, e.textureName, 0, CELL_SIZE) : null;
+
     return (
       <div
         key={e.id}
-        className={`entity ${isText ? 'entity-text' : `entity-${e.type.toLowerCase()}`}`}
+        className={`entity ${spriteUrl ? 'entity-sprite' : (e.type.startsWith('TEXT_') ? 'entity-text' : `entity-${e.type.toLowerCase()}`)}`}
         style={{
           left: GAP + e.position.x * STEP,
           top: GAP + e.position.y * STEP,
+          ...(spriteUrl ? {
+            backgroundImage: `url(${spriteUrl})`,
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+          } : {}),
         }}
       >
-        {entityLetter(e.type, e)}
+        {!spriteUrl && entityFallbackLabel(e.type, e)}
       </div>
     );
   };
@@ -97,8 +106,8 @@ export function Play() {
   const [level, setLevel] = useState<Level | null>(null);
   const [moveCount, setMoveCount] = useState(0);
   const historyRef = useRef<Grid[]>([]);
+  const spriteSheet = useSprites();
 
-  // Check for level in URL
   useEffect(() => {
     const levelId = searchParams.get('level');
     if (levelId) {
@@ -126,12 +135,24 @@ export function Play() {
       const data = localStorage.getItem('editor-grid');
       if (data) {
         const parsed = JSON.parse(data);
-        const g = createGrid(parsed.width, parsed.height);
-        for (const entity of parsed.entities) {
+        let lvl: Level;
+        if (parsed.thingsMap) {
+          lvl = parseCommunityLevel(parsed as CommunityLevel);
+        } else {
+          lvl = {
+            id: 'editor-temp',
+            name: parsed.name || 'Custom',
+            width: parsed.width,
+            height: parsed.height,
+            entities: parsed.entities,
+          };
+        }
+        const g = createGrid(lvl.width, lvl.height);
+        for (const entity of lvl.entities) {
           addEntity(g, entity);
         }
         setGrid(g);
-        setLevel({ id: 'editor-temp', name: parsed.name || 'Custom', width: parsed.width, height: parsed.height, entities: [] });
+        setLevel(lvl);
         setMoveCount(0);
         setGameState('playing');
       }
@@ -177,7 +198,6 @@ export function Play() {
         return;
       case 'r':
       case 'R':
-        // Restart level
         if (level) startLevel(level);
         return;
       default:
@@ -201,7 +221,6 @@ export function Play() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Check URL param for editor-temp on mount
   useEffect(() => {
     const levelId = searchParams.get('level');
     if (levelId === 'editor-temp' && gameState === 'menu') {
@@ -257,7 +276,7 @@ export function Play() {
       </div>
 
       <div className="game-area">
-        {renderGameGrid(grid)}
+        {renderGameGrid(grid, spriteSheet)}
       </div>
 
       <div className="controls-hint">

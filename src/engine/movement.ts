@@ -188,9 +188,12 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       continue;
     }
 
-    // Check for LOVE/HATE interactions
+    // Check for DEFEAT/LOVE/HATE interactions
     for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
+      if (destProps.isDefeat) {
+        destroys.push(you.id);
+      }
       if (destProps.isLove || destProps.isHate) {
         destroys.push(dest.id);
       }

@@ -179,6 +179,12 @@
   z-index: 1;
 }
 
+.entity-sprite {
+  background-color: transparent;
+  image-rendering: pixelated;
+  z-index: 1;
+}
+
 /* Baba - white with slight warmth, cute pixel look */
 .entity-baba {
   font-size: 20px;

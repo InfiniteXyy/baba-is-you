@@ -1,61 +1,45 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Grid, createGrid, addEntity, removeEntity } from '../engine/grid';
-import { createEntity, Entity, EntityType, TextWord } from '../engine/entities';
+import { createEntity, Entity, TextWord } from '../engine/entities';
+import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
+import { parseCommunityLevel, levelToCommunityFormat, CommunityLevel } from '../data/communityLevel';
 import './Editor.css';
 
 const CELL_SIZE = 32;
 const DEFAULT_WIDTH = 15;
 const DEFAULT_HEIGHT = 11;
 
-type PlaceTool = EntityType | 'eraser';
+type PlaceTool = string; // EntityType or 'eraser'
 
 interface PaletteItem {
   type: PlaceTool;
   label: string;
-  color?: string;
+  textureName: string;
   isText?: boolean;
   word?: TextWord;
 }
 
 const PALETTE: PaletteItem[] = [
-  { type: 'BABA', label: 'Baba', color: '#ffffff' },
-  { type: 'WALL', label: 'Wall', color: '#8B4513' },
-  { type: 'ROCK', label: 'Rock', color: '#808080' },
-  { type: 'FLAG', label: 'Flag', color: '#ff4444' },
-  { type: 'TEXT_WORD', label: 'Text', color: '#ffff00', isText: true },
-  { type: 'TEXT_IS', label: 'IS', color: '#ffff00', isText: true, word: 'IS' as TextWord },
-  { type: 'TEXT_AND', label: 'AND', color: '#ffff00', isText: true, word: 'AND' as TextWord },
-  { type: 'TEXT_YOU', label: 'YOU', color: '#ffff00', isText: true, word: 'YOU' as TextWord },
-  { type: 'TEXT_WIN', label: 'WIN', color: '#ffff00', isText: true, word: 'WIN' as TextWord },
-  { type: 'TEXT_PUSH', label: 'PUSH', color: '#ffff00', isText: true, word: 'PUSH' as TextWord },
-  { type: 'TEXT_STOP', label: 'STOP', color: '#ffff00', isText: true, word: 'STOP' as TextWord },
-  { type: 'TEXT_LOVE', label: 'LOVE', color: '#ffff00', isText: true, word: 'LOVE' as TextWord },
-  { type: 'TEXT_HATE', label: 'HATE', color: '#ffff00', isText: true, word: 'HATE' as TextWord },
-  { type: 'eraser', label: 'Eraser', color: '#ff0000' },
+  { type: 'BABA', label: 'Baba', textureName: 'BABA' },
+  { type: 'WALL', label: 'Wall', textureName: 'WALL' },
+  { type: 'ROCK', label: 'Rock', textureName: 'ROCK' },
+  { type: 'FLAG', label: 'Flag', textureName: 'FLAG' },
+  { type: 'CRAB', label: 'Crab', textureName: 'CRAB' },
+  { type: 'TEXT_WORD', label: 'Text…', textureName: '', isText: true },
+  { type: 'TEXT_IS', label: 'IS', textureName: 'Text_IS', isText: true },
+  { type: 'TEXT_AND', label: 'AND', textureName: 'Text_AND', isText: true },
+  { type: 'TEXT_YOU', label: 'YOU', textureName: 'Text_YOU', isText: true },
+  { type: 'TEXT_WIN', label: 'WIN', textureName: 'Text_WIN', isText: true },
+  { type: 'TEXT_PUSH', label: 'PUSH', textureName: 'Text_PUSH', isText: true },
+  { type: 'TEXT_STOP', label: 'STOP', textureName: 'Text_STOP', isText: true },
+  { type: 'TEXT_LOVE', label: 'LOVE', textureName: 'Text_LOVE', isText: true },
+  { type: 'TEXT_HATE', label: 'HATE', textureName: 'Text_HATE', isText: true },
+  { type: 'TEXT_DEFEAT', label: 'DEFEAT', textureName: 'Text_DEFEAT', isText: true },
+  { type: 'eraser', label: 'Eraser', textureName: '' },
 ];
 
-function entityColor(type: string): string {
-  switch (type) {
-    case 'BABA': return '#ffffff';
-    case 'WALL': return '#8B4513';
-    case 'ROCK': return '#808080';
-    case 'FLAG': return '#ff4444';
-    case 'TEXT_WORD':
-    case 'TEXT_IS':
-    case 'TEXT_AND':
-    case 'TEXT_YOU':
-    case 'TEXT_WIN':
-    case 'TEXT_PUSH':
-    case 'TEXT_STOP':
-    case 'TEXT_LOVE':
-    case 'TEXT_HATE':
-      return '#ffff00';
-    default: return '#cccccc';
-  }
-}
-
-function entityLetter(type: string, entity?: Entity): string {
+function entityFallbackLabel(type: string, entity?: Entity): string {
   if (type.startsWith('TEXT_')) {
     switch (type) {
       case 'TEXT_WORD': return entity?.word || '?';
@@ -67,7 +51,8 @@ function entityLetter(type: string, entity?: Entity): string {
       case 'TEXT_STOP': return 'STOP';
       case 'TEXT_LOVE': return 'LOVE';
       case 'TEXT_HATE': return 'HATE';
-      default: return '?';
+      case 'TEXT_DEFEAT': return 'DEFEAT';
+      default: return type.slice(5);
     }
   }
   switch (type) {
@@ -75,12 +60,27 @@ function entityLetter(type: string, entity?: Entity): string {
     case 'WALL': return '';
     case 'ROCK': return 'R';
     case 'FLAG': return 'F';
-    default: return '?';
+    case 'CRAB': return 'C';
+    default: return type.charAt(0);
+  }
+}
+
+function fallbackColor(type: string): string {
+  switch (type) {
+    case 'BABA': return '#ffffff';
+    case 'WALL': return '#8B4513';
+    case 'ROCK': return '#808080';
+    case 'FLAG': return '#ff4444';
+    case 'CRAB': return '#cc4444';
+    default:
+      if (type.startsWith('TEXT_')) return '#ffff00';
+      return '#cccccc';
   }
 }
 
 export function Editor() {
   const navigate = useNavigate();
+  const spriteSheet = useSprites();
   const [grid, setGrid] = useState<Grid>(() => createGrid(DEFAULT_WIDTH, DEFAULT_HEIGHT));
   const [gridWidth, setGridWidth] = useState(DEFAULT_WIDTH);
   const [gridHeight, setGridHeight] = useState(DEFAULT_HEIGHT);
@@ -90,7 +90,6 @@ export function Editor() {
   const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Save grid to localStorage whenever it changes
   useEffect(() => {
     const data = {
       id: 'editor-temp',
@@ -125,7 +124,6 @@ export function Editor() {
 
   function paintCell(x: number, y: number) {
     if (selectedTool === 'eraser') {
-      // Remove all entities at this cell
       const cell = grid.cells[y][x];
       const toRemove = [...cell.entities];
       for (const id of toRemove) {
@@ -133,23 +131,16 @@ export function Editor() {
       }
       setGrid({ ...grid });
     } else {
-      // Remove existing entities at this cell first
       const cell = grid.cells[y][x];
       const toRemove = [...cell.entities];
       for (const id of toRemove) {
         removeEntity(grid, id);
       }
 
-      // For TEXT_WORD, we need to prompt for the word value
       if (selectedTool === 'TEXT_WORD') {
         setTextInput({ x, y, value: '' });
       } else {
-        const paletteItem = PALETTE.find(p => p.type === selectedTool);
-        const entity = createEntity(
-          selectedTool as EntityType,
-          { x, y },
-          paletteItem?.word as TextWord | undefined
-        );
+        const entity = createEntity(selectedTool, { x, y });
         addEntity(grid, entity);
         setGrid({ ...grid });
       }
@@ -157,7 +148,7 @@ export function Editor() {
   }
 
   function handleMouseDown(e: React.MouseEvent) {
-    if (e.button === 2) return; // Right click handled separately
+    if (e.button === 2) return;
     const pos = getCellFromEvent(e);
     if (!pos) return;
     setIsPainting(true);
@@ -179,7 +170,6 @@ export function Editor() {
     e.preventDefault();
     const pos = getCellFromEvent(e);
     if (!pos) return;
-    // Right click erases
     const cell = grid.cells[pos.y][pos.x];
     const toRemove = [...cell.entities];
     for (const id of toRemove) {
@@ -191,12 +181,11 @@ export function Editor() {
   function handleTextSubmit(word: string) {
     if (!textInput) return;
     const upperWord = word.toUpperCase() as TextWord;
-    const validWords: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG', 'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE'];
+    const validWords: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT'];
     if (!validWords.includes(upperWord)) {
       setTextInput(null);
       return;
     }
-    // Remove existing entities at this cell
     const cell = grid.cells[textInput.y][textInput.x];
     const toRemove = [...cell.entities];
     for (const id of toRemove) {
@@ -209,41 +198,62 @@ export function Editor() {
   }
 
   function handleSave() {
-    const data = {
+    // Export in community format
+    const levelData = {
       id: 'custom',
       name: levelName,
       width: grid.width,
       height: grid.height,
       entities: Array.from(grid.entities.values()),
     };
-    const json = JSON.stringify(data, null, 2);
+    const communityJson = levelToCommunityFormat(levelData);
+    const json = JSON.stringify(communityJson, null, 2);
     navigator.clipboard.writeText(json).then(() => {
-      alert('Level JSON copied to clipboard!');
+      alert('Community format JSON copied to clipboard!');
     }).catch(() => {
-      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = json;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      alert('Level JSON copied to clipboard!');
+      alert('Community format JSON copied to clipboard!');
     });
   }
 
   function handleLoad() {
-    const json = prompt('Paste level JSON:');
+    const json = prompt('Paste level JSON (community or internal format):');
     if (!json) return;
     try {
       const data = JSON.parse(json);
-      const newGrid = createGrid(data.width, data.height);
-      for (const entity of data.entities) {
+      let entities: Entity[];
+      let width: number;
+      let height: number;
+      let name: string;
+
+      if (data.thingsMap) {
+        // Community format
+        const level = parseCommunityLevel(data as CommunityLevel);
+        entities = level.entities;
+        width = level.width;
+        height = level.height;
+        name = level.name;
+      } else {
+        // Legacy internal format
+        entities = data.entities;
+        width = data.width;
+        height = data.height;
+        name = data.name || 'My Level';
+      }
+
+      const newGrid = createGrid(width, height);
+      for (const entity of entities) {
         addEntity(newGrid, entity);
       }
       setGrid(newGrid);
-      setGridWidth(data.width);
-      setGridHeight(data.height);
-      setLevelName(data.name || 'My Level');
+      setGridWidth(width);
+      setGridHeight(height);
+      setLevelName(name);
     } catch (e) {
       alert('Invalid level JSON');
     }
@@ -251,6 +261,34 @@ export function Editor() {
 
   function handlePlay() {
     navigate('/play?level=editor-temp');
+  }
+
+  function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) {
+    const spriteUrl = sheet ? getSpriteDataUrl(sheet, e.textureName, 0, size) : null;
+    if (spriteUrl) {
+      return (
+        <div
+          key={e.id}
+          className="editor-entity editor-entity-sprite"
+          style={{
+            backgroundImage: `url(${spriteUrl})`,
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+          }}
+        />
+      );
+    }
+    // Fallback
+    return (
+      <div
+        key={e.id}
+        className={`editor-entity ${e.type.startsWith('TEXT_') ? 'editor-entity-text' : `editor-entity-${e.type.toLowerCase()}`}`}
+        style={{ backgroundColor: fallbackColor(e.type) }}
+      >
+        {entityFallbackLabel(e.type, e)}
+      </div>
+    );
   }
 
   function renderCells() {
@@ -261,35 +299,12 @@ export function Editor() {
         const key = `${x}-${y}`;
 
         if (cell.entities.length === 0) {
-          cells.push(
-            <div key={key} className="editor-cell empty" />
-          );
+          cells.push(<div key={key} className="editor-cell empty" />);
         } else {
-          // Render entities
           const allEntities = cell.entities.map(id => grid.entities.get(id)!).filter(e => e);
-          const nonText = allEntities.filter(e => !e.type.startsWith('TEXT_'));
-          const textEnts = allEntities.filter(e => e.type.startsWith('TEXT_'));
-
           cells.push(
             <div key={key} className="editor-cell">
-              {nonText.map(e => (
-                <div
-                  key={e.id}
-                  className={`editor-entity editor-entity-${e.type.toLowerCase()}`}
-                  style={{ backgroundColor: entityColor(e.type) }}
-                >
-                  {entityLetter(e.type, e)}
-                </div>
-              ))}
-              {textEnts.map(e => (
-                <div
-                  key={e.id}
-                  className="editor-entity editor-entity-text"
-                  style={{ backgroundColor: entityColor(e.type) }}
-                >
-                  {entityLetter(e.type, e)}
-                </div>
-              ))}
+              {allEntities.map(e => renderEntitySprite(e, spriteSheet, CELL_SIZE))}
             </div>
           );
         }
@@ -298,9 +313,32 @@ export function Editor() {
     return cells;
   }
 
+  function renderPaletteSwatch(item: PaletteItem) {
+    if (item.type === 'eraser') {
+      return <div className="palette-swatch" style={{ backgroundColor: '#ff0000' }} />;
+    }
+    if (spriteSheet && item.textureName) {
+      const url = getSpriteDataUrl(spriteSheet, item.textureName, 0, 18);
+      if (url) {
+        return (
+          <div
+            className="palette-swatch"
+            style={{
+              backgroundImage: `url(${url})`,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+              imageRendering: 'pixelated',
+            }}
+          />
+        );
+      }
+    }
+    return <div className="palette-swatch" style={{ backgroundColor: fallbackColor(item.type) }} />;
+  }
+
   return (
     <div className="editor-page">
-      {/* Top Bar */}
       <div className="editor-topbar">
         <div className="topbar-left">
           <a href="/play" className="back-link">Game</a>
@@ -350,25 +388,20 @@ export function Editor() {
       </div>
 
       <div className="editor-main">
-        {/* Left Sidebar - Palette */}
         <div className="palette">
           <div className="palette-title">Elements</div>
           {PALETTE.map(item => (
             <button
-              key={item.type}
+              key={item.type + item.label}
               className={`palette-item ${selectedTool === item.type ? 'selected' : ''}`}
               onClick={() => setSelectedTool(item.type)}
             >
-              <div
-                className="palette-swatch"
-                style={{ backgroundColor: item.color }}
-              />
+              {renderPaletteSwatch(item)}
               <span>{item.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Center - Grid Canvas */}
         <div className="canvas-container">
           <div
             ref={gridRef}
@@ -386,12 +419,11 @@ export function Editor() {
             {renderCells()}
           </div>
 
-          {/* Text Input Modal */}
           {textInput && (
             <div className="text-input-overlay">
               <div className="text-input-modal">
                 <div className="text-input-title">Enter word:</div>
-                <div className="text-input-hint">BABA, WALL, ROCK, FLAG, YOU, WIN, PUSH, STOP, LOVE, HATE</div>
+                <div className="text-input-hint">BABA, WALL, ROCK, FLAG, CRAB, YOU, WIN, PUSH, STOP, LOVE, HATE, DEFEAT</div>
                 <input
                   type="text"
                   className="text-input-field"
@@ -413,7 +445,6 @@ export function Editor() {
           )}
         </div>
 
-        {/* Right Sidebar */}
         <div className="sidebar-right">
           <div className="sidebar-title">Controls</div>
           <div className="help-text">

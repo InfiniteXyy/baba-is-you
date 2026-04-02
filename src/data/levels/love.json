@@ -1,0 +1,40 @@
+{
+  "id": "love",
+  "name": "Love",
+  "sceneWidth": 11,
+  "sceneHeight": 9,
+  "thingsMap": [
+    {"species":"characters","name":"BABA","thingSetup":[
+      {"defaultBlockX":2,"defaultBlockY":4,"defaultTowards":0,"textureName":"BABA"}
+    ]},
+    {"species":"characters","name":"ROCK","thingSetup":[
+      {"defaultBlockX":5,"defaultBlockY":4,"defaultTowards":0,"textureName":"ROCK"}
+    ]},
+    {"species":"characters","name":"FLAG","thingSetup":[
+      {"defaultBlockX":8,"defaultBlockY":4,"defaultTowards":0,"textureName":"FLAG"}
+    ]},
+    {"species":"nouns","name":"Text_BABA","thingSetup":[
+      {"defaultBlockX":0,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_BABA"}
+    ]},
+    {"species":"nouns","name":"Text_ROCK","thingSetup":[
+      {"defaultBlockX":4,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_ROCK"}
+    ]},
+    {"species":"nouns","name":"Text_FLAG","thingSetup":[
+      {"defaultBlockX":8,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_FLAG"}
+    ]},
+    {"species":"operators","name":"Text_IS","thingSetup":[
+      {"defaultBlockX":1,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_IS"},
+      {"defaultBlockX":5,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_IS"},
+      {"defaultBlockX":9,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_IS"}
+    ]},
+    {"species":"properties","name":"Text_YOU","thingSetup":[
+      {"defaultBlockX":2,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_YOU"}
+    ]},
+    {"species":"properties","name":"Text_LOVE","thingSetup":[
+      {"defaultBlockX":6,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_LOVE"}
+    ]},
+    {"species":"properties","name":"Text_WIN","thingSetup":[
+      {"defaultBlockX":10,"defaultBlockY":2,"defaultTowards":0,"textureName":"Text_WIN"}
+    ]}
+  ]
+}
