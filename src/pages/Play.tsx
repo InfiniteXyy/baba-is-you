@@ -228,29 +228,51 @@ export function Play() {
   }, []);
 
   if (gameState === 'menu') {
+    // Group levels by world (first digit of level number)
+    const worlds: { name: string; levels: Level[] }[] = [
+      { name: 'World 0', levels: [] },
+      { name: 'World 1', levels: [] },
+      { name: 'World 2', levels: [] },
+      { name: 'World 3', levels: [] },
+    ];
+    for (const lvl of levels) {
+      const m = lvl.id.match(/level(\d)/);
+      if (m) {
+        const idx = parseInt(m[1]);
+        if (worlds[idx]) worlds[idx].levels.push(lvl);
+      }
+    }
+    // Remove empty worlds
+    const activeWorlds = worlds.filter(w => w.levels.length > 0);
+
     return (
       <div className="play-page">
-        <h1 className="game-title">Baba Is You</h1>
-        <p className="game-subtitle">A puzzle game where rules are what you make of them</p>
+        <h1 className="game-title">BABA IS YOU</h1>
+        <p className="game-subtitle">push the rules, break the rules</p>
         <div className="level-select">
-          <h2>Select Level</h2>
-          <div className="level-list">
-            {levels.map(lvl => (
-              <button
-                key={lvl.id}
-                className="level-button"
-                onClick={() => startLevel(lvl)}
-              >
-                {lvl.name}
-              </button>
-            ))}
-            <button
-              className="level-button editor-button"
-              onClick={() => window.location.href = '/editor'}
-            >
-              Map Editor
-            </button>
-          </div>
+          {activeWorlds.map((world, wi) => (
+            <div key={wi} className="world-group">
+              <div className="world-label">{world.name}</div>
+              <div className="level-grid">
+                {world.levels.map((lvl, li) => (
+                  <button
+                    key={lvl.id}
+                    className="level-card"
+                    onClick={() => startLevel(lvl)}
+                  >
+                    <span className="level-number">{li + 1}</span>
+                    <span className="level-card-name">{lvl.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button
+            className="editor-launch"
+            onClick={() => window.location.href = '/editor'}
+          >
+            ✏️ Map Editor
+          </button>
         </div>
       </div>
     );

@@ -81,9 +81,12 @@ export function getSpriteDataUrl(
   if (spriteCache.has(cacheKey)) return spriteCache.get(cacheKey)!;
 
   const frameKeys = sheet.frameMap.get(textureName);
-  if (!frameKeys || !frameKeys[frame]) return null;
+  if (!frameKeys) return null;
+  // Fall back to frame 0 if requested frame doesn't exist
+  const frameKey = frameKeys[frame] ?? frameKeys[0];
+  if (!frameKey) return null;
 
-  const frameData = sheet.json.frames[frameKeys[frame]];
+  const frameData = sheet.json.frames[frameKey];
   if (!frameData) return null;
 
   const canvas = document.createElement('canvas');
@@ -98,15 +101,16 @@ export function getSpriteDataUrl(
   const scale = size / src.w;
 
   if (frameData.rotated) {
-    // Rotated 90° CW in atlas: w/h are swapped in the atlas
-    const dw = trim.h * scale;
-    const dh = trim.w * scale;
-    const dx = trim.y * scale;
-    const dy = trim.x * scale;
+    // TexturePacker rotated 90° CW: frame.w/h are ORIGINAL dimensions,
+    // atlas region is (f.h × f.w). Swap source w/h when sampling.
+    const dx = trim.x * scale;
+    const dy = trim.y * scale;
+    const dw = trim.w * scale;
+    const dh = trim.h * scale;
     ctx.save();
     ctx.translate(dx + dw / 2, dy + dh / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, -dh / 2, -dw / 2, dh, dw);
+    ctx.drawImage(sheet.image, f.x, f.y, f.h, f.w, -dh / 2, -dw / 2, dh, dw);
     ctx.restore();
   } else if (frameData.trimmed) {
     const dx = trim.x * scale;

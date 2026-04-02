@@ -14,87 +14,126 @@
 /* Level Select */
 .game-title {
   font-size: 2.4rem;
-  margin-bottom: 0.5rem;
-  color: #ff6b6b;
+  margin-bottom: 0.3rem;
+  color: #fff;
   text-shadow:
     3px 3px 0 #000,
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-    0 0 20px rgba(255, 107, 107, 0.4);
-  letter-spacing: 2px;
+    0 0 30px rgba(255, 255, 255, 0.15);
+  letter-spacing: 4px;
+  text-transform: uppercase;
 }
 
 .game-subtitle {
-  font-size: 0.7rem;
-  color: #888;
-  margin-bottom: 2rem;
-  letter-spacing: 1px;
+  font-size: 0.6rem;
+  color: #555;
+  margin-bottom: 2.5rem;
+  letter-spacing: 2px;
+  text-transform: lowercase;
 }
 
 .level-select {
-  text-align: center;
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.level-select h2 {
-  margin-bottom: 1.5rem;
-  font-size: 1rem;
-  color: #aaa;
-}
-
-.level-list {
+.world-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.level-button {
-  padding: 14px 40px;
-  font-size: 0.8rem;
-  background: #1a1a3e;
-  color: #ddd;
-  border: 2px solid #333;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
+.world-label {
+  font-size: 0.65rem;
+  color: #666;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  padding-left: 4px;
+}
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.level-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #111118;
+  color: #bbb;
+  border: 1px solid #1a1a2a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  text-align: left;
   position: relative;
   overflow: hidden;
 }
 
-.level-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-  transition: left 0.3s;
-}
-
-.level-button:hover::before {
-  left: 100%;
-}
-
-.level-button:hover {
-  background: #252550;
-  border-color: #ff6b6b;
+.level-card:hover {
+  background: #18182e;
+  border-color: #444;
   color: #fff;
-  transform: scale(1.02);
-  box-shadow: 0 0 15px rgba(255, 107, 107, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.editor-button {
-  margin-top: 20px;
-  background: #1a2a3e;
-  border-color: #445;
+.level-card:active {
+  transform: translateY(0);
 }
 
-.editor-button:hover {
-  border-color: #6b9bff;
-  box-shadow: 0 0 15px rgba(107, 155, 255, 0.2);
+.level-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: #1a1a30;
+  color: #666;
+  font-size: 0.6rem;
+  flex-shrink: 0;
+}
+
+.level-card:hover .level-number {
+  background: #252550;
+  color: #aaa;
+}
+
+.level-card-name {
+  font-size: 0.55rem;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-launch {
+  align-self: center;
+  margin-top: 8px;
+  padding: 10px 28px;
+  font-size: 0.6rem;
+  background: transparent;
+  color: #555;
+  border: 1px dashed #333;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.editor-launch:hover {
+  color: #aaa;
+  border-color: #555;
+  background: #0e0e16;
 }
 
 /* Game Header */
