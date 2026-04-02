@@ -56,9 +56,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 async function doLoad(): Promise<SpriteSheet> {
+  const base = import.meta.env.BASE_URL;
   const [json, image] = await Promise.all([
-    fetch('/assets/game_sprites.json').then(r => r.json()) as Promise<SpritesheetJson>,
-    loadImage('/assets/game_sprites.webp'),
+    fetch(`${base}game_sprites.json`).then(r => r.json()) as Promise<SpritesheetJson>,
+    loadImage(`${base}game_sprites.webp`),
   ]);
   const frameMap = buildFrameMap(json);
   return { image, json, frameMap };
