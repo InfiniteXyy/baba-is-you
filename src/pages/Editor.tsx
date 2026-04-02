@@ -2,110 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, removeEntity } from '../engine/grid';
 import { createEntity, Entity, TextWord } from '../engine/entities';
-import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
+import { useSprites } from '../data/sprites';
 import { parseCommunityLevel, levelToCommunityFormat, CommunityLevel } from '../data/communityLevel';
+import { CELL_SIZE, DEFAULT_WIDTH, DEFAULT_HEIGHT, QUICK_PATTERNS, PlaceTool, SavedMap } from './editor/constants';
+import { EditorPalette } from './editor/EditorPalette';
+import { EditorSidebar } from './editor/EditorSidebar';
+import { EditorCanvas } from './editor/EditorCanvas';
+import { SharedMapPopup } from './editor/SharedMapPopup';
 import './Editor.css';
-
-const CELL_SIZE = 28;
-const DEFAULT_WIDTH = 24;
-const DEFAULT_HEIGHT = 18;
-
-type PlaceTool = string;
-
-interface PaletteItem {
-  type: PlaceTool;
-  label: string;
-  textureName: string;
-  isText?: boolean;
-  word?: TextWord;
-}
-
-interface QuickPattern {
-  label: string;
-  entities: { type: string; word?: string; offsetX: number }[];
-}
-
-const QUICK_PATTERNS: QuickPattern[] = [
-  { label: 'BABA IS YOU', entities: [
-    { type: 'TEXT_WORD', word: 'BABA', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_YOU', offsetX: 2 },
-  ]},
-  { label: 'WALL IS STOP', entities: [
-    { type: 'TEXT_WORD', word: 'WALL', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_STOP', offsetX: 2 },
-  ]},
-  { label: 'ROCK IS PUSH', entities: [
-    { type: 'TEXT_WORD', word: 'ROCK', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_PUSH', offsetX: 2 },
-  ]},
-  { label: 'FLAG IS WIN', entities: [
-    { type: 'TEXT_WORD', word: 'FLAG', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_WIN', offsetX: 2 },
-  ]},
-  { label: 'WATER IS SINK', entities: [
-    { type: 'TEXT_WORD', word: 'WATER', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_SINK', offsetX: 2 },
-  ]},
-  { label: 'KEY IS OPEN', entities: [
-    { type: 'TEXT_WORD', word: 'KEY', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_OPEN', offsetX: 2 },
-  ]},
-  { label: 'DOOR IS SHUT', entities: [
-    { type: 'TEXT_WORD', word: 'DOOR', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_SHUT', offsetX: 2 },
-  ]},
-  { label: 'LAVA IS HOT', entities: [
-    { type: 'TEXT_WORD', word: 'LAVA', offsetX: 0 },
-    { type: 'TEXT_IS', offsetX: 1 },
-    { type: 'TEXT_HOT', offsetX: 2 },
-  ]},
-];
-
-const CHARACTER_PALETTE: PaletteItem[] = [
-  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'FLOWER',
-  'ALGAE', 'BRICK', 'BUBBLE', 'COG', 'DOOR', 'ICE', 'JELLY', 'KEY', 'PILLAR',
-  'PIPE', 'ROBOT', 'SKULL', 'STAR', 'TILE',
-].map(name => ({ type: name, label: name, textureName: name }));
-
-const NOUN_PALETTE: PaletteItem[] = [
-  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'ICE', 'JELLY',
-  'COG', 'DOOR', 'KEY', 'PILLAR', 'PIPE', 'ROBOT', 'SKULL', 'STAR',
-].map(name => ({ type: `NOUN_${name}`, label: name, textureName: `Text_${name}`, isText: true, word: name as TextWord }));
-
-const OPERATOR_PALETTE: PaletteItem[] = [
-  { type: 'TEXT_IS', label: 'IS', textureName: 'Text_IS', isText: true },
-  { type: 'TEXT_AND', label: 'AND', textureName: 'Text_AND', isText: true },
-];
-
-const PROPERTY_PALETTE: PaletteItem[] = [
-  'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT',
-  'SINK', 'HOT', 'MELT', 'FLOAT', 'MOVE', 'OPEN', 'SHUT', 'WEAK',
-].map(name => ({ type: `TEXT_${name}`, label: name, textureName: `Text_${name}`, isText: true }));
-
-interface SavedMap {
-  id: string;
-  name: string;
-  updatedAt: number;
-  data: string;
-}
-
-function fallbackColor(type: string): string {
-  if (type.startsWith('TEXT_')) return '#ffff00';
-  switch (type) {
-    case 'BABA': return '#ffffff';
-    case 'WALL': return '#8B4513';
-    case 'ROCK': return '#808080';
-    case 'FLAG': return '#ff4444';
-    default: return '#cccccc';
-  }
-}
 
 export function Editor() {
   const navigate = useNavigate();
@@ -145,7 +49,21 @@ export function Editor() {
   currentMapIdRef.current = currentMapId;
   savedMapsRef.current = savedMaps;
 
-  // Load shared map from URL
+  function loadMapFromSaved(map: SavedMap) {
+    const data = JSON.parse(map.data);
+    const level = parseCommunityLevel(data as CommunityLevel);
+    const newGrid = createGrid(level.width, level.height);
+    for (const entity of level.entities) {
+      addEntity(newGrid, entity);
+    }
+    setGrid(newGrid);
+    setGridWidth(level.width);
+    setGridHeight(level.height);
+    setLevelName(level.name);
+    setCurrentMapId(map.id);
+  }
+
+  // Load shared map from URL, or from ?id=, or auto-load most recent saved map
   useEffect(() => {
     const mapData = searchParams.get('map');
     if (mapData) {
@@ -159,7 +77,6 @@ export function Editor() {
       return;
     }
 
-    // Load existing map from ?id= param on mount
     const urlId = searchParams.get('id');
     if (urlId) {
       const stored = localStorage.getItem('editor-saved-maps');
@@ -167,19 +84,23 @@ export function Editor() {
       const map = maps.find(m => m.id === urlId);
       if (map) {
         try {
-          const data = JSON.parse(map.data);
-          const level = parseCommunityLevel(data as CommunityLevel);
-          const newGrid = createGrid(level.width, level.height);
-          for (const entity of level.entities) {
-            addEntity(newGrid, entity);
-          }
-          setGrid(newGrid);
-          setGridWidth(level.width);
-          setGridHeight(level.height);
-          setLevelName(level.name);
+          loadMapFromSaved(map);
         } catch {
           console.error('Failed to load map from URL id');
         }
+      }
+      return;
+    }
+
+    // No ?map= and no ?id= — auto-load the most recently updated saved map
+    const stored = localStorage.getItem('editor-saved-maps');
+    const maps: SavedMap[] = stored ? JSON.parse(stored) : [];
+    if (maps.length > 0) {
+      const mostRecent = maps.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      try {
+        loadMapFromSaved(mostRecent);
+      } catch {
+        console.error('Failed to auto-load most recent map');
       }
     }
   }, []);
@@ -196,7 +117,6 @@ export function Editor() {
     setLevelName(level.name);
     setCurrentMapId(null);
     setSharedMapPopup(null);
-    // Clear the map param from URL
     navigate('/editor', { replace: true });
   }
 
@@ -235,16 +155,9 @@ export function Editor() {
     };
   }, [isResizing]);
 
-  const filterItems = (items: PaletteItem[]) =>
-    searchQuery ? items.filter(i => i.label.toLowerCase().includes(searchQuery.toLowerCase())) : items;
-
-  const filterPatterns = (patterns: QuickPattern[]) =>
-    searchQuery ? patterns.filter(p => p.label.toLowerCase().includes(searchQuery.toLowerCase())) : patterns;
-
   // Debounced auto-save (uses refs to avoid re-triggering)
   const hasUserEdited = useRef(false);
   useEffect(() => {
-    // Skip auto-save until user has made an edit (prevents new map on refresh)
     if (!hasUserEdited.current) {
       hasUserEdited.current = true;
       if (!currentMapIdRef.current) return;
@@ -256,14 +169,12 @@ export function Editor() {
       const name = levelNameRef.current;
       const mapId = currentMapIdRef.current;
 
-      // Save editor-grid for Play route
       const tempData = {
         id: 'editor-temp', name, width: g.width, height: g.height,
         entities: Array.from(g.entities.values()),
       };
       localStorage.setItem('editor-grid', JSON.stringify(levelToCommunityFormat(tempData)));
 
-      // Auto-save to saved maps
       const communityJson = levelToCommunityFormat({
         id: mapId || 'custom', name, width: g.width, height: g.height,
         entities: Array.from(g.entities.values()),
@@ -391,17 +302,7 @@ export function Editor() {
     const map = savedMaps.find(m => m.id === id);
     if (!map) return;
     try {
-      const data = JSON.parse(map.data);
-      const level = parseCommunityLevel(data as CommunityLevel);
-      const newGrid = createGrid(level.width, level.height);
-      for (const entity of level.entities) {
-        addEntity(newGrid, entity);
-      }
-      setGrid(newGrid);
-      setGridWidth(level.width);
-      setGridHeight(level.height);
-      setLevelName(level.name);
-      setCurrentMapId(id);
+      loadMapFromSaved(map);
     } catch {
       alert('Failed to load map');
     }
@@ -530,89 +431,6 @@ export function Editor() {
     setRenamingId(null);
   }
 
-  function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) {
-    const spriteUrl = sheet ? getSpriteDataUrl(sheet, e.textureName, 0, size) : null;
-    if (spriteUrl) {
-      return (
-        <div
-          key={e.id}
-          className="editor-entity editor-entity-sprite"
-          style={{
-            backgroundImage: `url(${spriteUrl})`,
-            backgroundSize: 'contain',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-          }}
-        />
-      );
-    }
-    return (
-      <div
-        key={e.id}
-        className="editor-entity"
-        style={{ backgroundColor: fallbackColor(e.type), fontSize: '8px', color: '#000' }}
-      >
-        {e.type.startsWith('TEXT_') ? (e.word || e.type.slice(5)) : e.type.charAt(0)}
-      </div>
-    );
-  }
-
-  function renderCells() {
-    const cells: React.JSX.Element[] = [];
-    for (let y = 0; y < grid.height; y++) {
-      for (let x = 0; x < grid.width; x++) {
-        const cell = grid.cells[y][x];
-        const key = `${x}-${y}`;
-
-        if (cell.entities.length === 0) {
-          cells.push(<div key={key} className="editor-cell empty" />);
-        } else {
-          const allEntities = cell.entities.map(id => grid.entities.get(id)!).filter(e => e);
-          cells.push(
-            <div key={key} className="editor-cell">
-              {allEntities.map(e => renderEntitySprite(e, spriteSheet, CELL_SIZE))}
-            </div>
-          );
-        }
-      }
-    }
-    return cells;
-  }
-
-  function renderPaletteItem(item: PaletteItem) {
-    const isSelected = selectedTool === item.type;
-    let swatch: React.JSX.Element;
-
-    if (item.type === 'eraser') {
-      swatch = <div className="palette-swatch eraser-swatch">✕</div>;
-    } else if (spriteSheet && item.textureName) {
-      const url = getSpriteDataUrl(spriteSheet, item.textureName, 0, 28);
-      swatch = url
-        ? <div className="palette-swatch" style={{
-            backgroundImage: `url(${url})`,
-            backgroundSize: 'contain',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            imageRendering: 'pixelated',
-          }} />
-        : <div className="palette-swatch" style={{ backgroundColor: fallbackColor(item.type) }} />;
-    } else {
-      swatch = <div className="palette-swatch" style={{ backgroundColor: fallbackColor(item.type) }} />;
-    }
-
-    return (
-      <button
-        key={item.type}
-        className={`palette-item ${isSelected ? 'selected' : ''}`}
-        onClick={() => setSelectedTool(item.type)}
-        title={item.label}
-      >
-        {swatch}
-        <span className="palette-label">{item.label}</span>
-      </button>
-    );
-  }
-
   return (
     <div className="editor-page">
       <div className="editor-topbar">
@@ -668,158 +486,46 @@ export function Editor() {
       </div>
 
       <div className="editor-main">
-        <div className="palette" style={{ width: paletteWidth }}>
-          <input
-            type="text"
-            className="palette-search"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          {filterPatterns(QUICK_PATTERNS).length > 0 && (
-            <div className="palette-section">
-              <div className="palette-section-title">Quick Rules</div>
-              <div className="pattern-list">
-                {filterPatterns(QUICK_PATTERNS).map((p) => {
-                  const originalIdx = QUICK_PATTERNS.indexOf(p);
-                  return (
-                    <button
-                      key={originalIdx}
-                      className={`pattern-item ${selectedTool === `PATTERN_${originalIdx}` ? 'selected' : ''}`}
-                      onClick={() => setSelectedTool(`PATTERN_${originalIdx}`)}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {filterItems(CHARACTER_PALETTE).length > 0 && (
-            <div className="palette-section">
-              <div className="palette-section-title">Characters</div>
-              <div className="palette-grid">
-                {filterItems(CHARACTER_PALETTE).map(item => renderPaletteItem(item))}
-              </div>
-            </div>
-          )}
-          {filterItems(NOUN_PALETTE).length > 0 && (
-            <div className="palette-section">
-              <div className="palette-section-title">Nouns</div>
-              <div className="palette-grid">
-                {filterItems(NOUN_PALETTE).map(item => renderPaletteItem(item))}
-              </div>
-            </div>
-          )}
-          {filterItems(OPERATOR_PALETTE).length > 0 && (
-            <div className="palette-section">
-              <div className="palette-section-title">Operators</div>
-              <div className="palette-grid">
-                {filterItems(OPERATOR_PALETTE).map(item => renderPaletteItem(item))}
-              </div>
-            </div>
-          )}
-          {filterItems(PROPERTY_PALETTE).length > 0 && (
-            <div className="palette-section">
-              <div className="palette-section-title">Properties</div>
-              <div className="palette-grid">
-                {filterItems(PROPERTY_PALETTE).map(item => renderPaletteItem(item))}
-              </div>
-            </div>
-          )}
-          <div className="palette-section">
-            <div className="palette-section-title">Tools</div>
-            <div className="palette-grid">
-              {renderPaletteItem({ type: 'eraser', label: 'Eraser', textureName: '' })}
-            </div>
-          </div>
-          <div className="resize-handle" onMouseDown={() => setIsResizing(true)} />
-        </div>
+        <EditorPalette
+          paletteWidth={paletteWidth}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedTool={selectedTool}
+          setSelectedTool={setSelectedTool}
+          setIsResizing={setIsResizing}
+          spriteSheet={spriteSheet}
+        />
 
-        <div className="canvas-container">
-          <div
-            ref={gridRef}
-            className="editor-grid"
-            style={{
-              gridTemplateColumns: `repeat(${grid.width}, ${CELL_SIZE}px)`,
-              gridTemplateRows: `repeat(${grid.height}, ${CELL_SIZE}px)`,
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onContextMenu={handleContextMenu}
-          >
-            {renderCells()}
-          </div>
-        </div>
+        <EditorCanvas
+          grid={grid}
+          spriteSheet={spriteSheet}
+          cellSize={CELL_SIZE}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onContextMenu={handleContextMenu}
+          gridRef={gridRef}
+        />
 
-        <div className="sidebar-right">
-          <div className="sidebar-title">My Maps</div>
-          <div className="saved-maps-list">
-            {savedMaps.length === 0 && <div className="no-maps">Auto-saved maps appear here</div>}
-            {savedMaps.map(map => (
-              <div
-                key={map.id}
-                className={`saved-map-item ${map.id === currentMapId ? 'active' : ''}`}
-                onClick={() => handleLoadMap(map.id)}
-                onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(map.id); }}
-              >
-                {renamingId === map.id ? (
-                  <input
-                    className="saved-map-rename-input"
-                    defaultValue={map.name}
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleRename(map.id, (e.target as HTMLInputElement).value);
-                      }
-                    }}
-                    onBlur={(e) => handleRename(map.id, e.target.value)}
-                  />
-                ) : (
-                  <span className="saved-map-name">{map.name}</span>
-                )}
-                <div className="saved-map-actions">
-                  <button
-                    className="saved-map-action"
-                    onClick={(e) => { e.stopPropagation(); handleDuplicateMap(map.id); }}
-                    title="Duplicate"
-                  >⧉</button>
-                  <button
-                    className="saved-map-action"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id); }}
-                    title="Delete"
-                  >×</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="sidebar-section">
-            <div className="sidebar-title">Controls</div>
-            <div className="help-text">
-              <p>Click to place</p>
-              <p>Right-click to erase</p>
-              <p>Drag to paint</p>
-            </div>
-          </div>
-        </div>
+        <EditorSidebar
+          savedMaps={savedMaps}
+          currentMapId={currentMapId}
+          renamingId={renamingId}
+          setRenamingId={setRenamingId}
+          onLoadMap={handleLoadMap}
+          onDeleteMap={handleDeleteMap}
+          onDuplicateMap={handleDuplicateMap}
+          onRename={handleRename}
+        />
       </div>
 
       {sharedMapPopup && (
-        <div className="shared-map-overlay">
-          <div className="shared-map-modal">
-            <h2>Shared Map</h2>
-            <p className="shared-map-name">{sharedMapPopup.data.name}</p>
-            <p className="shared-map-info">{sharedMapPopup.data.sceneWidth}×{sharedMapPopup.data.sceneHeight}</p>
-            <div className="shared-map-buttons">
-              <button onClick={() => loadSharedMap(sharedMapPopup.data)}>Edit</button>
-              <button onClick={() => playSharedMap(sharedMapPopup.data)}>▶ Play</button>
-              <button onClick={() => { setSharedMapPopup(null); navigate('/editor', { replace: true }); }}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <SharedMapPopup
+          data={sharedMapPopup.data}
+          onEdit={() => loadSharedMap(sharedMapPopup.data)}
+          onPlay={() => playSharedMap(sharedMapPopup.data)}
+          onCancel={() => { setSharedMapPopup(null); navigate('/editor', { replace: true }); }}
+        />
       )}
     </div>
   );
