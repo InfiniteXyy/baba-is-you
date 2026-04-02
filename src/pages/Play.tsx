@@ -7,8 +7,10 @@ import { parseCommunityLevel, CommunityLevel } from '../data/communityLevel';
 import { Entity } from '../engine/entities';
 import { evaluateRules, getPropertiesForType, RuleSet } from '../engine/rules';
 import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
+import { MobileDPad } from '../components/MobileDPad';
 
 type PlayState = 'menu' | 'playing' | 'won' | 'dead';
+const isTouchDevice = 'ontouchstart' in window;
 
 const CELL_SIZE = 40;
 const STEP = CELL_SIZE;
@@ -231,72 +233,8 @@ export function Play() {
     }
   }
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Handle keyboard shortcuts in death dialog
-    if (gameState === 'dead' && grid) {
-      switch (e.key) {
-        case 'z':
-        case 'Z':
-          e.preventDefault();
-          if (historyRef.current.length > 0) {
-            const prev = historyRef.current[historyRef.current.length - 1];
-            historyRef.current = historyRef.current.slice(0, -1);
-            setGrid(prev);
-            setMoveCount(m => Math.max(0, m - 1));
-            setGameState('playing');
-          }
-          return;
-        case 'r':
-        case 'R':
-          if (level) startLevel(level);
-          return;
-      }
-      return;
-    }
-
+  function handleMove(dir: Direction) {
     if (gameState !== 'playing' || !grid) return;
-
-    let dir: Direction | null = null;
-    switch (e.key) {
-      case 'ArrowUp':
-      case 'w':
-      case 'W':
-        dir = 'up';
-        break;
-      case 'ArrowDown':
-      case 's':
-      case 'S':
-        dir = 'down';
-        break;
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
-        dir = 'left';
-        break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
-        dir = 'right';
-        break;
-      case 'z':
-      case 'Z':
-        e.preventDefault();
-        if (historyRef.current.length > 0) {
-          const prev = historyRef.current[historyRef.current.length - 1];
-          historyRef.current = historyRef.current.slice(0, -1);
-          setGrid(prev);
-          setMoveCount(m => Math.max(0, m - 1));
-        }
-        return;
-      case 'r':
-      case 'R':
-        if (level) startLevel(level);
-        return;
-      default:
-        return;
-    }
-
-    e.preventDefault();
     const result = tick(grid, dir);
     if (result.moved) {
       historyRef.current = [...historyRef.current, cloneGrid(grid)];
@@ -308,6 +246,41 @@ export function Play() {
     } else if (result.dead) {
       setGameState('dead');
     }
+  }
+
+  function handleUndo() {
+    if (!grid || historyRef.current.length === 0) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    setGrid(prev);
+    setMoveCount(m => Math.max(0, m - 1));
+    if (gameState === 'dead') setGameState('playing');
+  }
+
+  function handleRetry() {
+    if (level) startLevel(level);
+  }
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (gameState === 'dead' && grid) {
+      if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); handleUndo(); return; }
+      if (e.key === 'r' || e.key === 'R') { handleRetry(); return; }
+      return;
+    }
+    if (gameState !== 'playing' || !grid) return;
+
+    let dir: Direction | null = null;
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': dir = 'up'; break;
+      case 'ArrowDown': case 's': case 'S': dir = 'down'; break;
+      case 'ArrowLeft': case 'a': case 'A': dir = 'left'; break;
+      case 'ArrowRight': case 'd': case 'D': dir = 'right'; break;
+      case 'z': case 'Z': e.preventDefault(); handleUndo(); return;
+      case 'r': case 'R': handleRetry(); return;
+      default: return;
+    }
+    e.preventDefault();
+    handleMove(dir);
   }, [gameState, grid, level]);
 
   useEffect(() => {
@@ -399,6 +372,15 @@ export function Play() {
         Arrow keys / WASD to move &bull; Z to undo &bull; R to restart
       </div>
 
+      {isTouchDevice && (
+        <MobileDPad
+          onMove={handleMove}
+          onUndo={handleUndo}
+          onRetry={handleRetry}
+          gameState={gameState}
+        />
+      )}
+
       {gameState === 'won' && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-100 animate-[fade-in_0.3s_ease]">
           <div className="bg-[#1a1a3e] border-[3px] border-accent-gold py-10 px-15 text-center rounded shadow-[0_0_80px_rgba(255,209,102,0.2),0_0_0_1px_rgba(255,209,102,0.1)] animate-[pop-in_0.3s_ease]">
@@ -433,16 +415,8 @@ export function Play() {
             <h2 className="text-[1.8rem] text-danger mb-4 [text-shadow:2px_2px_0_#000,0_0_20px_rgba(204,68,68,0.4)]">You Died</h2>
             <p className="text-[0.8rem] text-text-light mb-8">Don't give up!</p>
             <div className="flex gap-3 justify-center">
-              <button className={modalBtnClass} onClick={() => startLevel(level)}>Retry</button>
-              <button className={modalBtnClass} onClick={() => {
-                if (historyRef.current.length > 0) {
-                  const prev = historyRef.current[historyRef.current.length - 1];
-                  historyRef.current = historyRef.current.slice(0, -1);
-                  setGrid(prev);
-                  setMoveCount(m => Math.max(0, m - 1));
-                  setGameState('playing');
-                }
-              }}>Undo</button>
+              <button className={modalBtnClass} onClick={handleRetry}>Retry</button>
+              <button className={modalBtnClass} onClick={handleUndo}>Undo</button>
               <button className={modalBtnClass} onClick={() => setGameState('menu')}>Menu</button>
             </div>
           </div>
