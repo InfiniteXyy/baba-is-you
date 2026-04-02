@@ -199,7 +199,15 @@ export function Editor() {
     searchQuery ? patterns.filter(p => p.label.toLowerCase().includes(searchQuery.toLowerCase())) : patterns;
 
   // Debounced auto-save (uses refs to avoid re-triggering)
+  const hasInitialized = useRef(false);
   useEffect(() => {
+    // Skip auto-save on initial mount (prevents creating a new map on refresh)
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      // Only skip if there's no currentMapId (fresh page load)
+      if (!currentMapIdRef.current) return;
+    }
+
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
       const g = gridRef2.current;

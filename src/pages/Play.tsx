@@ -171,6 +171,28 @@ export function Play() {
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Handle keyboard shortcuts in death dialog
+    if (gameState === 'dead' && grid) {
+      switch (e.key) {
+        case 'z':
+        case 'Z':
+          e.preventDefault();
+          if (historyRef.current.length > 0) {
+            const prev = historyRef.current[historyRef.current.length - 1];
+            historyRef.current = historyRef.current.slice(0, -1);
+            setGrid(prev);
+            setMoveCount(m => Math.max(0, m - 1));
+            setGameState('playing');
+          }
+          return;
+        case 'r':
+        case 'R':
+          if (level) startLevel(level);
+          return;
+      }
+      return;
+    }
+
     if (gameState !== 'playing' || !grid) return;
 
     let dir: Direction | null = null;
