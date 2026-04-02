@@ -9,7 +9,7 @@ import { evaluateRules, getPropertiesForType, RuleSet } from '../engine/rules';
 import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
 import './Play.css';
 
-type PlayState = 'menu' | 'playing' | 'won';
+type PlayState = 'menu' | 'playing' | 'won' | 'dead';
 
 const CELL_SIZE = 40;
 const STEP = CELL_SIZE;
@@ -212,6 +212,8 @@ export function Play() {
     setGrid(result.grid);
     if (result.won) {
       setGameState('won');
+    } else if (result.dead) {
+      setGameState('dead');
     }
   }, [gameState, grid, level]);
 
@@ -269,7 +271,7 @@ export function Play() {
           ))}
           <button
             className="editor-launch"
-            onClick={() => window.location.href = '/editor'}
+            onClick={() => window.location.hash = '#/editor'}
           >
             ✏️ Map Editor
           </button>
@@ -326,6 +328,28 @@ export function Play() {
                   Next Level
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {gameState === 'dead' && (
+        <div className="death-overlay">
+          <div className="death-modal">
+            <h2>You Died</h2>
+            <p>Don't give up!</p>
+            <div className="win-buttons">
+              <button onClick={() => startLevel(level)}>Retry</button>
+              <button onClick={() => {
+                if (historyRef.current.length > 0) {
+                  const prev = historyRef.current[historyRef.current.length - 1];
+                  historyRef.current = historyRef.current.slice(0, -1);
+                  setGrid(prev);
+                  setMoveCount(m => Math.max(0, m - 1));
+                  setGameState('playing');
+                }
+              }}>Undo</button>
+              <button onClick={() => setGameState('menu')}>Menu</button>
             </div>
           </div>
         </div>

@@ -23,6 +23,7 @@ export interface EntityMovement {
 export interface GameTickResult {
   grid: Grid;
   won: boolean;
+  dead: boolean;
   moved: boolean;
   movements: EntityMovement[];
 }
@@ -57,7 +58,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
 
   if (youEntities.length === 0) {
     const transformed = transformations.size > 0;
-    return { grid: workGrid, won: false, moved: transformed, movements: [] };
+    return { grid: workGrid, won: false, dead: false, moved: transformed, movements: [] };
   }
 
   const newGrid = cloneGrid(workGrid);
@@ -101,7 +102,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isWin) {
-        return { grid: newGrid, won: true, moved: true, movements: [] };
+        return { grid: newGrid, won: true, dead: false, moved: true, movements: [] };
       }
     }
 
@@ -191,7 +192,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       continue;
     }
 
-    // Check for DEFEAT/LOVE/HATE/SINK interactions
+    // Check for DEFEAT/LOVE/HATE interactions with YOU
     const youProps = getPropertiesForType(rules, you.type);
     for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
@@ -199,11 +200,6 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
         destroys.push(you.id);
       }
       if (destProps.isLove || destProps.isHate) {
-        destroys.push(dest.id);
-      }
-      // SINK: both the sinking entity and the YOU entity are destroyed
-      if (destProps.isSink) {
-        destroys.push(you.id);
         destroys.push(dest.id);
       }
       // HOT + MELT: if dest is HOT and YOU is MELT, YOU is destroyed
@@ -242,6 +238,24 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     }
   }
 
+  // Post-move: SINK — any SINK entity sharing a cell with a non-SINK entity destroys both
+  const sinkDestroys = new Set<string>();
+  for (const entity of newGrid.entities.values()) {
+    const props = getPropertiesForType(rules, entity.type);
+    if (props.isSink) {
+      const others = getEntitiesAt(newGrid, entity.position);
+      for (const other of others) {
+        if (other.id !== entity.id) {
+          sinkDestroys.add(entity.id);
+          sinkDestroys.add(other.id);
+        }
+      }
+    }
+  }
+  for (const id of sinkDestroys) {
+    removeEntity(newGrid, id);
+  }
+
   // Post-move: WEAK entities overlapping with other entities are destroyed
   const weakDestroys: string[] = [];
   for (const entity of newGrid.entities.values()) {
@@ -257,7 +271,18 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     removeEntity(newGrid, id);
   }
 
-  return { grid: newGrid, won: false, moved: hasMoved, movements: allMovements };
+  // Check if all YOU entities were destroyed this tick (death)
+  const postRules = evaluateRules(newGrid);
+  let hasYou = false;
+  for (const entity of newGrid.entities.values()) {
+    if (getPropertiesForType(postRules, entity.type).isYou) {
+      hasYou = true;
+      break;
+    }
+  }
+  const dead = !hasYou && youEntities.length > 0;
+
+  return { grid: newGrid, won: false, dead, moved: hasMoved, movements: allMovements };
 }
 
 function isValidPosition(grid: Grid, pos: Position): boolean {
