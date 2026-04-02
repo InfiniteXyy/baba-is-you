@@ -1,45 +1,71 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme {
+  --font-retro: "Press Start 2P", "Courier New", monospace;
+  --color-bg: #0f0f23;
+  --color-bg-dark: #080808;
+  --color-bg-panel: #0e0e0e;
+  --color-bg-card: #111118;
+  --color-bg-input: #111111;
+  --color-border: #1a1a1a;
+  --color-border-hover: #333333;
+  --color-border-active: #444444;
+  --color-border-bright: #555555;
+  --color-text-dim: #333333;
+  --color-text-muted: #555555;
+  --color-text-subtle: #666666;
+  --color-text-soft: #888888;
+  --color-text-light: #aaaaaa;
+  --color-text-normal: #bbbbbb;
+  --color-text-bright: #cccccc;
+  --color-text-primary: #dddddd;
+  --color-text-white: #eeeeee;
+  --color-accent-gold: #ffd166;
+  --color-accent-red: #ff6b6b;
+  --color-accent-green: #6bff8b;
+  --color-danger: #cc4444;
 }
 
-html, body, #root {
-  height: 100%;
+@layer base {
+  * {
+    user-select: none;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    font-family: var(--font-retro);
+    background: var(--color-bg);
+    color: var(--color-text-white);
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+  }
+
+  a { color: inherit; }
+  button { font-family: inherit; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--color-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--color-border-hover); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-border-bright); }
 }
 
-body {
-  font-family: 'Press Start 2P', 'Courier New', monospace;
-  background: #0f0f23;
-  color: #eee;
-  image-rendering: pixelated;
-  -webkit-font-smoothing: none;
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-a {
-  color: inherit;
+@keyframes pop-in {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-button {
-  font-family: inherit;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0f0f23;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+@utility entity-transition {
+  transition: left 120ms ease-out, top 120ms ease-out;
 }

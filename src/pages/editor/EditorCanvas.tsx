@@ -21,7 +21,7 @@ function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) 
     return (
       <div
         key={e.id}
-        className="editor-entity editor-entity-sprite"
+        className="absolute inset-0 flex items-center justify-center font-bold text-[10px] text-black rounded-sm !bg-transparent [image-rendering:pixelated]"
         style={{
           backgroundImage: `url(${spriteUrl})`,
           backgroundSize: 'contain',
@@ -34,7 +34,7 @@ function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) 
   return (
     <div
       key={e.id}
-      className="editor-entity"
+      className="absolute inset-0 flex items-center justify-center font-bold rounded-sm"
       style={{ backgroundColor: fallbackColor(e.type), fontSize: '8px', color: '#000' }}
     >
       {e.type.startsWith('TEXT_') ? (e.word || e.type.slice(5)) : e.type.charAt(0)}
@@ -50,11 +50,11 @@ function renderCells(grid: Grid, spriteSheet: SpriteSheet | null) {
       const key = `${x}-${y}`;
 
       if (cell.entities.length === 0) {
-        cells.push(<div key={key} className="editor-cell empty" />);
+        cells.push(<div key={key} className="w-7 h-7 flex items-center justify-center bg-[#0a0a0a] relative" />);
       } else {
         const allEntities = cell.entities.map(id => grid.entities.get(id)!).filter(e => e);
         cells.push(
-          <div key={key} className="editor-cell">
+          <div key={key} className="w-7 h-7 flex items-center justify-center bg-[#0a0a0a] relative">
             {allEntities.map(e => renderEntitySprite(e, spriteSheet, CELL_SIZE))}
           </div>
         );
@@ -69,10 +69,10 @@ export function EditorCanvas({
   onMouseDown, onMouseMove, onMouseUp, onContextMenu, gridRef,
 }: EditorCanvasProps) {
   return (
-    <div className="canvas-container">
+    <div className="flex-1 flex justify-center items-start relative">
       <div
         ref={gridRef}
-        className="editor-grid"
+        className="grid gap-px bg-[#060606] p-px cursor-crosshair select-none border-2 border-border rounded"
         style={{
           gridTemplateColumns: `repeat(${grid.width}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${grid.height}, ${cellSize}px)`,

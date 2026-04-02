@@ -9,7 +9,7 @@ import { EditorPalette } from './editor/EditorPalette';
 import { EditorSidebar } from './editor/EditorSidebar';
 import { EditorCanvas } from './editor/EditorCanvas';
 import { SharedMapPopup } from './editor/SharedMapPopup';
-import './Editor.css';
+
 
 export function Editor() {
   const navigate = useNavigate();
@@ -431,26 +431,28 @@ export function Editor() {
     setRenamingId(null);
   }
 
+  const editorBtnCls = 'px-2.5 py-1 bg-bg-input border border-border text-text-soft cursor-pointer text-[0.55rem] font-[inherit] tracking-[1px] transition-all duration-100 rounded hover:bg-[#1a1a1a] hover:border-border-hover hover:text-text-bright';
+
   return (
-    <div className="editor-page">
-      <div className="editor-topbar">
-        <div className="topbar-left">
-          <button className="back-link" onClick={() => navigate('/play')}>← Game</button>
+    <div className="flex flex-col h-screen bg-bg-dark overflow-hidden font-retro">
+      <div className="flex items-center justify-between px-3 py-2 bg-bg-panel border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <button className="bg-transparent border-none text-text-subtle cursor-pointer text-[0.55rem] font-[inherit] tracking-[1px] transition-colors duration-100 hover:text-text-bright" onClick={() => navigate('/play')}>← Game</button>
         </div>
-        <div className="topbar-center">
+        <div className="flex items-center gap-3">
           <input
             type="text"
-            className="level-name-input"
+            className="bg-bg-input border border-border text-white px-3 py-1 text-[0.6rem] w-[160px] font-[inherit] tracking-[1px] rounded focus:outline-none focus:border-border-active"
             value={levelName}
             onChange={e => setLevelName(e.target.value)}
             placeholder="Level name"
           />
-          <div className="grid-size-controls">
-            <label className="grid-size-label">
+          <div className="flex items-center gap-1 text-[0.5rem] text-text-subtle">
+            <label className="flex items-center gap-[3px]">
               W
               <input
                 type="number"
-                className="grid-size-input"
+                className="w-[36px] bg-bg-input border border-border text-white px-1 py-0.5 text-[0.5rem] text-center font-[inherit] rounded focus:outline-none focus:border-border-active"
                 min={5}
                 max={30}
                 value={gridWidth}
@@ -460,11 +462,11 @@ export function Editor() {
                 }}
               />
             </label>
-            <label className="grid-size-label">
+            <label className="flex items-center gap-[3px]">
               H
               <input
                 type="number"
-                className="grid-size-input"
+                className="w-[36px] bg-bg-input border border-border text-white px-1 py-0.5 text-[0.5rem] text-center font-[inherit] rounded focus:outline-none focus:border-border-active"
                 min={5}
                 max={20}
                 value={gridHeight}
@@ -476,16 +478,16 @@ export function Editor() {
             </label>
           </div>
         </div>
-        <div className="topbar-right">
-          <button className="editor-btn" onClick={handleNew}>New</button>
-          <button className="editor-btn" onClick={handleExportJson}>Export</button>
-          <button className="editor-btn" onClick={handleImportJson}>Import</button>
-          <button className="editor-btn" onClick={handleShare}>Share</button>
-          <button className="editor-btn play-btn" onClick={handlePlay}>▶ Play</button>
+        <div className="flex items-center gap-1.5">
+          <button className={editorBtnCls} onClick={handleNew}>New</button>
+          <button className={editorBtnCls} onClick={handleExportJson}>Export</button>
+          <button className={editorBtnCls} onClick={handleImportJson}>Import</button>
+          <button className={editorBtnCls} onClick={handleShare}>Share</button>
+          <button className={`${editorBtnCls} !bg-[#1a3a1a] !border-[#2a5a2a] hover:!bg-[#2a4a2a]`} onClick={handlePlay}>▶ Play</button>
         </div>
       </div>
 
-      <div className="editor-main">
+      <div className="flex flex-1 gap-2.5 p-2.5 overflow-hidden">
         <EditorPalette
           paletteWidth={paletteWidth}
           searchQuery={searchQuery}
