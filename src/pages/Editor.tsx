@@ -366,6 +366,22 @@ export function Editor() {
     }
   }
 
+  function handleDuplicateMap(id: string) {
+    const source = savedMaps.find(m => m.id === id);
+    if (!source) return;
+    const newId = crypto.randomUUID();
+    const duplicate: SavedMap = {
+      id: newId,
+      name: `${source.name} (copy)`,
+      updatedAt: Date.now(),
+      data: source.data,
+    };
+    const updated = [...savedMaps, duplicate];
+    setSavedMaps(updated);
+    localStorage.setItem('editor-saved-maps', JSON.stringify(updated));
+    handleLoadMap(newId);
+  }
+
   function handleExportJson() {
     const levelData = {
       id: currentMapId || 'custom',
@@ -716,11 +732,18 @@ export function Editor() {
                 ) : (
                   <span className="saved-map-name">{map.name}</span>
                 )}
-                <button
-                  className="saved-map-delete"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id); }}
-                  title="Delete"
-                >×</button>
+                <div className="saved-map-actions">
+                  <button
+                    className="saved-map-action"
+                    onClick={(e) => { e.stopPropagation(); handleDuplicateMap(map.id); }}
+                    title="Duplicate"
+                  >⧉</button>
+                  <button
+                    className="saved-map-action"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id); }}
+                    title="Delete"
+                  >×</button>
+                </div>
               </div>
             ))}
           </div>

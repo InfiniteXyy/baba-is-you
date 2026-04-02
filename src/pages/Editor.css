@@ -195,7 +195,7 @@
 
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 3px;
 }
 
@@ -384,18 +384,28 @@
   color: #ccc;
 }
 
-.saved-map-delete {
+.saved-map-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.saved-map-action {
   background: none;
   border: none;
   color: #333;
   cursor: pointer;
   font-size: 0.7rem;
-  padding: 0 4px;
+  padding: 0 3px;
   font-family: inherit;
   transition: color 0.1s;
 }
 
-.saved-map-delete:hover {
+.saved-map-action:hover {
+  color: #aaa;
+}
+
+.saved-map-action:last-child:hover {
   color: #cc4444;
 }
 
