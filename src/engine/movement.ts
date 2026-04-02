@@ -1,6 +1,6 @@
 // Movement engine: handles player input, collision, and state transitions
 import { Grid, cloneGrid, moveEntity, removeEntity, getEntitiesAt } from './grid';
-import { Entity, EntityType, Position } from './entities';
+import { Entity, EntityType, Facing, Position } from './entities';
 import { evaluateRules, evaluateTransformations, getPropertiesForType } from './rules';
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
@@ -175,6 +175,9 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
               const target = { x: e.position.x + offset.x, y: e.position.y + offset.y };
               moveEntity(newGrid, e.id, target);
               allMovements.push({ entityId: e.id, from, to: target });
+              // Update facing for pushed entities
+              if (offset.x < 0) e.facing = 'left';
+              else if (offset.x > 0) e.facing = 'right';
             }
           }
           hasMoved = true;
@@ -188,13 +191,28 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       continue;
     }
 
-    // Check for DEFEAT/LOVE/HATE interactions
+    // Check for DEFEAT/LOVE/HATE/SINK interactions
+    const youProps = getPropertiesForType(rules, you.type);
     for (const dest of nonYouDest) {
       const destProps = getPropertiesForType(rules, dest.type);
       if (destProps.isDefeat) {
         destroys.push(you.id);
       }
       if (destProps.isLove || destProps.isHate) {
+        destroys.push(dest.id);
+      }
+      // SINK: both the sinking entity and the YOU entity are destroyed
+      if (destProps.isSink) {
+        destroys.push(you.id);
+        destroys.push(dest.id);
+      }
+      // HOT + MELT: if dest is HOT and YOU is MELT, YOU is destroyed
+      if (destProps.isHot && youProps.isMelt) {
+        destroys.push(you.id);
+      }
+      // OPEN + SHUT: if YOU is OPEN and dest is SHUT (or vice versa), both destroyed
+      if ((youProps.isOpen && destProps.isShut) || (youProps.isShut && destProps.isOpen)) {
+        destroys.push(you.id);
         destroys.push(dest.id);
       }
     }
@@ -208,12 +226,35 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     removeEntity(newGrid, id);
   }
 
+  // Determine facing from movement direction
+  const facing: Facing | null = dir === 'left' ? 'left' : dir === 'right' ? 'right' : null;
+
   // Apply moves
   for (const m of moves) {
     if (m.from.x !== m.to.x || m.from.y !== m.to.y) {
       moveEntity(newGrid, m.entityId, m.to);
       allMovements.push({ entityId: m.entityId, from: m.from, to: m.to });
+      // Update facing for entities that moved horizontally
+      const ent = newGrid.entities.get(m.entityId);
+      if (ent && facing) {
+        ent.facing = facing;
+      }
     }
+  }
+
+  // Post-move: WEAK entities overlapping with other entities are destroyed
+  const weakDestroys: string[] = [];
+  for (const entity of newGrid.entities.values()) {
+    const props = getPropertiesForType(rules, entity.type);
+    if (props.isWeak) {
+      const others = getEntitiesAt(newGrid, entity.position);
+      if (others.length > 1) {
+        weakDestroys.push(entity.id);
+      }
+    }
+  }
+  for (const id of weakDestroys) {
+    removeEntity(newGrid, id);
   }
 
   return { grid: newGrid, won: false, moved: hasMoved, movements: allMovements };

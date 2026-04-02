@@ -2,7 +2,7 @@
 
 .play-page {
   min-height: 100vh;
-  background: #0f0f23;
+  background: #080808;
   color: #eee;
   display: flex;
   flex-direction: column;
@@ -147,18 +147,9 @@
 
 .game-grid {
   position: relative;
-  background: #0a0a1a;
+  background: #0a0a0a;
   padding: 0;
-  border: 3px solid #222;
-  box-shadow:
-    0 0 0 1px #333,
-    0 0 60px rgba(0, 0, 0, 0.6),
-    inset 0 0 30px rgba(0, 0, 0, 0.3);
   border-radius: 2px;
-}
-
-.cell {
-  background: #16162a;
 }
 
 /* Entity base */
@@ -182,6 +173,7 @@
 .entity-sprite {
   background-color: transparent;
   image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
   z-index: 1;
 }
 

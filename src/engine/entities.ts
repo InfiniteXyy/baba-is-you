@@ -3,21 +3,23 @@
 export type EntityType = string;
 
 // Known entity types for reference
-export const CHARACTER_TYPES = ['BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB'] as const;
+export const CHARACTER_TYPES = [
+  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'FLOWER',
+  'ALGAE', 'BRICK', 'BUBBLE', 'COG', 'DOOR', 'ICE', 'JELLY', 'KEY', 'PILLAR',
+  'PIPE', 'ROBOT', 'SKULL', 'STAR', 'TILE',
+] as const;
 
 export type TextWord =
-  | 'BABA'
-  | 'WALL'
-  | 'ROCK'
-  | 'FLAG'
-  | 'CRAB'
-  | 'YOU'
-  | 'WIN'
-  | 'PUSH'
-  | 'STOP'
-  | 'LOVE'
-  | 'HATE'
-  | 'DEFEAT';
+  | 'BABA' | 'WALL' | 'ROCK' | 'FLAG' | 'CRAB'
+  | 'WATER' | 'LAVA' | 'GRASS' | 'ICE' | 'JELLY'
+  | 'COG' | 'DOOR' | 'KEY' | 'PILLAR' | 'PIPE'
+  | 'ROBOT' | 'SKULL' | 'STAR'
+  | 'YOU' | 'WIN' | 'PUSH' | 'STOP'
+  | 'LOVE' | 'HATE' | 'DEFEAT'
+  | 'SINK' | 'HOT' | 'MELT' | 'FLOAT' | 'MOVE'
+  | 'OPEN' | 'SHUT' | 'WEAK';
+
+export type Facing = 'left' | 'right';
 
 export interface Entity {
   id: string;
@@ -25,6 +27,7 @@ export interface Entity {
   position: Position;
   word?: TextWord;
   textureName: string;
+  facing: Facing;
 }
 
 export interface Position {
@@ -56,6 +59,7 @@ export function createEntity(
     position: { ...position },
     ...(word !== undefined && { word }),
     textureName: deriveTextureName(type, word),
+    facing: 'right' as Facing,
   };
 }
 

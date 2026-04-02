@@ -2,7 +2,7 @@
 import { Grid, getEntitiesAt } from './grid';
 import { Entity, TextWord } from './entities';
 
-export type PropertyName = 'isYou' | 'isWin' | 'isPush' | 'isStop' | 'isLove' | 'isHate' | 'isKill' | 'isDefeat';
+export type PropertyName = 'isYou' | 'isWin' | 'isPush' | 'isStop' | 'isLove' | 'isHate' | 'isKill' | 'isDefeat' | 'isSink' | 'isHot' | 'isMelt' | 'isFloat' | 'isMove' | 'isOpen' | 'isShut' | 'isWeak';
 
 export interface EffectiveProperties {
   isYou: boolean;
@@ -13,6 +13,14 @@ export interface EffectiveProperties {
   isHate: boolean;
   isKill: boolean;
   isDefeat: boolean;
+  isSink: boolean;
+  isHot: boolean;
+  isMelt: boolean;
+  isFloat: boolean;
+  isMove: boolean;
+  isOpen: boolean;
+  isShut: boolean;
+  isWeak: boolean;
 }
 
 export type RuleSet = Map<string, EffectiveProperties>; // entityType -> properties
@@ -26,13 +34,27 @@ const EMPTY_PROPS: EffectiveProperties = {
   isHate: false,
   isKill: false,
   isDefeat: false,
+  isSink: false,
+  isHot: false,
+  isMelt: false,
+  isFloat: false,
+  isMove: false,
+  isOpen: false,
+  isShut: false,
+  isWeak: false,
 };
 
 // Entity names that can appear as subject OR predicate (noun-is-noun transformation)
-export const ENTITY_KEYWORDS: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB'];
+export const ENTITY_KEYWORDS: TextWord[] = [
+  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'ICE',
+  'JELLY', 'COG', 'DOOR', 'KEY', 'PILLAR', 'PIPE', 'ROBOT', 'SKULL', 'STAR',
+];
 
 // Keywords that can appear as the predicate of a rule
-const PROPERTY_KEYWORDS: TextWord[] = ['YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT'];
+const PROPERTY_KEYWORDS: TextWord[] = [
+  'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT',
+  'SINK', 'HOT', 'MELT', 'FLOAT', 'MOVE', 'OPEN', 'SHUT', 'WEAK',
+];
 
 function propertyNameFromWord(word: TextWord): PropertyName | null {
   switch (word) {
@@ -43,6 +65,14 @@ function propertyNameFromWord(word: TextWord): PropertyName | null {
     case 'LOVE': return 'isLove';
     case 'HATE': return 'isHate';
     case 'DEFEAT': return 'isDefeat';
+    case 'SINK': return 'isSink';
+    case 'HOT': return 'isHot';
+    case 'MELT': return 'isMelt';
+    case 'FLOAT': return 'isFloat';
+    case 'MOVE': return 'isMove';
+    case 'OPEN': return 'isOpen';
+    case 'SHUT': return 'isShut';
+    case 'WEAK': return 'isWeak';
     default: return null;
   }
 }
@@ -50,14 +80,11 @@ function propertyNameFromWord(word: TextWord): PropertyName | null {
 // Extract a property keyword from an entity, handling both dedicated property types
 // (TEXT_YOU, TEXT_WIN, etc.) and TEXT_WORD entities with property keywords.
 function getPropertyFromEntity(entity: Entity): TextWord | null {
-  switch (entity.type) {
-    case 'TEXT_YOU': return 'YOU';
-    case 'TEXT_WIN': return 'WIN';
-    case 'TEXT_PUSH': return 'PUSH';
-    case 'TEXT_STOP': return 'STOP';
-    case 'TEXT_LOVE': return 'LOVE';
-    case 'TEXT_HATE': return 'HATE';
-    case 'TEXT_DEFEAT': return 'DEFEAT';
+  // Handle dedicated TEXT_X types
+  const prefix = 'TEXT_';
+  if (entity.type.startsWith(prefix) && entity.type !== 'TEXT_WORD') {
+    const word = entity.type.slice(prefix.length) as TextWord;
+    if (PROPERTY_KEYWORDS.includes(word)) return word;
   }
   if (entity.type === 'TEXT_WORD' && entity.word && PROPERTY_KEYWORDS.includes(entity.word)) {
     return entity.word;

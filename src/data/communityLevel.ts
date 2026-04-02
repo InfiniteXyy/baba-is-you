@@ -39,7 +39,7 @@ const OPERATOR_TEXTURES = new Set(['Text_IS', 'Text_AND', 'Text_NOT', 'Text_HAS'
 const PROPERTY_TEXTURES = new Set([
   'Text_YOU', 'Text_WIN', 'Text_PUSH', 'Text_STOP', 'Text_LOVE', 'Text_HATE',
   'Text_DEFEAT', 'Text_HOT', 'Text_MELT', 'Text_FLOAT', 'Text_SINK',
-  'Text_OPEN', 'Text_SHUT', 'Text_MOVE', 'Text_PULL', 'Text_SHIFT',
+  'Text_OPEN', 'Text_SHUT', 'Text_MOVE', 'Text_PULL', 'Text_SHIFT', 'Text_WEAK',
 ]);
 
 function textureNameToEntityInfo(textureName: string, species: string): { type: string; word?: TextWord } {

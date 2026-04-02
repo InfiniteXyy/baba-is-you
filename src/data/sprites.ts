@@ -90,12 +90,30 @@ export function getSpriteDataUrl(
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
 
   const f = frameData.frame;
+  const src = frameData.sourceSize;
+  const trim = frameData.spriteSourceSize;
+  const scale = size / src.w;
+
   if (frameData.rotated) {
-    ctx.translate(size / 2, size / 2);
+    // Rotated 90° CW in atlas: w/h are swapped in the atlas
+    const dw = trim.h * scale;
+    const dh = trim.w * scale;
+    const dx = trim.y * scale;
+    const dy = trim.x * scale;
+    ctx.save();
+    ctx.translate(dx + dw / 2, dy + dh / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, -size / 2, -size / 2, size, size);
+    ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, -dh / 2, -dw / 2, dh, dw);
+    ctx.restore();
+  } else if (frameData.trimmed) {
+    const dx = trim.x * scale;
+    const dy = trim.y * scale;
+    const dw = trim.w * scale;
+    const dh = trim.h * scale;
+    ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, dx, dy, dw, dh);
   } else {
     ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, 0, 0, size, size);
   }

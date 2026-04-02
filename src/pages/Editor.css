@@ -242,6 +242,7 @@
 .editor-entity-sprite {
   background-color: transparent;
   image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
 }
 
 .editor-entity-baba {

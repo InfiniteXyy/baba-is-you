@@ -1,18 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, cloneGrid } from '../engine/grid';
 import { tick, Direction } from '../engine/movement';
 import { levels, getLevelById, Level } from '../data/levels';
 import { parseCommunityLevel, CommunityLevel } from '../data/communityLevel';
 import { Entity } from '../engine/entities';
+import { evaluateRules, getPropertiesForType, RuleSet } from '../engine/rules';
 import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
 import './Play.css';
 
 type PlayState = 'menu' | 'playing' | 'won';
 
 const CELL_SIZE = 40;
-const GAP = 2;
-const STEP = CELL_SIZE + GAP;
+const STEP = CELL_SIZE;
+const ANIM_INTERVAL = 200;
+const ANIM_FRAMES = 3;
 
 function entityFallbackLabel(type: string, entity: Entity): string {
   if (type.startsWith('TEXT_')) {
@@ -40,49 +42,35 @@ function entityFallbackLabel(type: string, entity: Entity): string {
   }
 }
 
-function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null): JSX.Element {
-  const gridW = grid.width * STEP + GAP;
-  const gridH = grid.height * STEP + GAP;
-
-  const cells: JSX.Element[] = [];
-  for (let y = 0; y < grid.height; y++) {
-    for (let x = 0; x < grid.width; x++) {
-      cells.push(
-        <div
-          key={`cell-${x}-${y}`}
-          className="cell"
-          style={{
-            position: 'absolute',
-            left: GAP + x * STEP,
-            top: GAP + y * STEP,
-            width: CELL_SIZE,
-            height: CELL_SIZE,
-          }}
-        />
-      );
-    }
-  }
+function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null, animFrame: number, rules: RuleSet): JSX.Element {
+  const gridW = grid.width * STEP;
+  const gridH = grid.height * STEP;
 
   const allEntities = Array.from(grid.entities.values());
   const nonText = allEntities.filter(e => !e.type.startsWith('TEXT_'));
   const textEnts = allEntities.filter(e => e.type.startsWith('TEXT_'));
 
   const renderEntity = (e: Entity) => {
-    const spriteUrl = spriteSheet ? getSpriteDataUrl(spriteSheet, e.textureName, 0, CELL_SIZE) : null;
+    const spriteUrl = spriteSheet ? getSpriteDataUrl(spriteSheet, e.textureName, animFrame, CELL_SIZE) : null;
+    const flipX = e.facing === 'left' && !e.type.startsWith('TEXT_');
+    const props = getPropertiesForType(rules, e.type);
+    const isStop = props.isStop;
 
     return (
       <div
         key={e.id}
         className={`entity ${spriteUrl ? 'entity-sprite' : (e.type.startsWith('TEXT_') ? 'entity-text' : `entity-${e.type.toLowerCase()}`)}`}
         style={{
-          left: GAP + e.position.x * STEP,
-          top: GAP + e.position.y * STEP,
+          left: e.position.x * STEP,
+          top: e.position.y * STEP,
           ...(spriteUrl ? {
             backgroundImage: `url(${spriteUrl})`,
             backgroundSize: 'contain',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center',
           } : {}),
+          ...(flipX ? { transform: 'scaleX(-1)' } : {}),
+          ...(!isStop && !e.type.startsWith('TEXT_') ? { opacity: 0.7 } : {}),
         }}
       >
         {!spriteUrl && entityFallbackLabel(e.type, e)}
@@ -92,7 +80,6 @@ function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null): JSX.Elemen
 
   return (
     <div className="game-grid" style={{ width: gridW, height: gridH }}>
-      {cells}
       {nonText.map(renderEntity)}
       {textEnts.map(renderEntity)}
     </div>
@@ -107,6 +94,18 @@ export function Play() {
   const [moveCount, setMoveCount] = useState(0);
   const historyRef = useRef<Grid[]>([]);
   const spriteSheet = useSprites();
+  const [animFrame, setAnimFrame] = useState(0);
+
+  // Animation frame cycling
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    const timer = setInterval(() => {
+      setAnimFrame(f => (f + 1) % ANIM_FRAMES);
+    }, ANIM_INTERVAL);
+    return () => clearInterval(timer);
+  }, [gameState]);
+
+  const rules = useMemo(() => grid ? evaluateRules(grid) : new Map(), [grid]);
 
   useEffect(() => {
     const levelId = searchParams.get('level');
@@ -276,7 +275,7 @@ export function Play() {
       </div>
 
       <div className="game-area">
-        {renderGameGrid(grid, spriteSheet)}
+        {renderGameGrid(grid, spriteSheet, animFrame, rules)}
       </div>
 
       <div className="controls-hint">
