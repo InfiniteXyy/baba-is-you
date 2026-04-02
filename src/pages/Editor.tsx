@@ -125,7 +125,10 @@ export function Editor() {
   const [levelName, setLevelName] = useState('My Level');
   const [isPainting, setIsPainting] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [paletteWidth, setPaletteWidth] = useState(240);
+  const [paletteWidth, setPaletteWidth] = useState(() => {
+    const stored = localStorage.getItem('editor-palette-width');
+    return stored ? Number(stored) : 240;
+  });
   const [isResizing, setIsResizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sharedMapPopup, setSharedMapPopup] = useState<{ data: CommunityLevel } | null>(null);
@@ -220,7 +223,10 @@ export function Editor() {
       const newWidth = Math.max(160, Math.min(400, e.clientX - 16));
       setPaletteWidth(newWidth);
     };
-    const handleUp = () => setIsResizing(false);
+    const handleUp = () => {
+      setIsResizing(false);
+      setPaletteWidth(w => { localStorage.setItem('editor-palette-width', String(w)); return w; });
+    };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
     return () => {

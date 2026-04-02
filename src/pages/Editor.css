@@ -165,6 +165,7 @@
   gap: 4px;
   border-radius: 4px;
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: calc(100vh - 80px);
   position: relative;
 }
