@@ -42,7 +42,7 @@ function entityFallbackLabel(type: string, entity: Entity): string {
   }
 }
 
-function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null, animFrame: number, rules: RuleSet): JSX.Element {
+function renderGameGrid(grid: Grid, spriteSheet: SpriteSheet | null, animFrame: number, rules: RuleSet): React.JSX.Element {
   const gridW = grid.width * STEP;
   const gridH = grid.height * STEP;
 

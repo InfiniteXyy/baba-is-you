@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Grid, createGrid, addEntity, removeEntity } from '../engine/grid';
 import { createEntity, Entity, TextWord } from '../engine/entities';
@@ -292,7 +292,7 @@ export function Editor() {
   }
 
   function renderCells() {
-    const cells: JSX.Element[] = [];
+    const cells: React.JSX.Element[] = [];
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const cell = grid.cells[y][x];
