@@ -10,7 +10,7 @@ const CELL_SIZE = 32;
 const DEFAULT_WIDTH = 15;
 const DEFAULT_HEIGHT = 11;
 
-type PlaceTool = string; // EntityType or 'eraser'
+type PlaceTool = string; // EntityType or 'eraser' or 'NOUN_xxx'
 
 interface PaletteItem {
   type: PlaceTool;
@@ -20,24 +20,33 @@ interface PaletteItem {
   word?: TextWord;
 }
 
-const PALETTE: PaletteItem[] = [
-  { type: 'BABA', label: 'Baba', textureName: 'BABA' },
-  { type: 'WALL', label: 'Wall', textureName: 'WALL' },
-  { type: 'ROCK', label: 'Rock', textureName: 'ROCK' },
-  { type: 'FLAG', label: 'Flag', textureName: 'FLAG' },
-  { type: 'CRAB', label: 'Crab', textureName: 'CRAB' },
-  { type: 'TEXT_WORD', label: 'Text…', textureName: '', isText: true },
+const CHARACTER_PALETTE: PaletteItem[] = [
+  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'FLOWER',
+  'ALGAE', 'BRICK', 'BUBBLE', 'COG', 'DOOR', 'ICE', 'JELLY', 'KEY', 'PILLAR',
+  'PIPE', 'ROBOT', 'SKULL', 'STAR', 'TILE',
+].map(name => ({ type: name, label: name, textureName: name }));
+
+const NOUN_PALETTE: PaletteItem[] = [
+  'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'ICE', 'JELLY',
+  'COG', 'DOOR', 'KEY', 'PILLAR', 'PIPE', 'ROBOT', 'SKULL', 'STAR',
+].map(name => ({ type: `NOUN_${name}`, label: name, textureName: `Text_${name}`, isText: true, word: name as TextWord }));
+
+const OPERATOR_PALETTE: PaletteItem[] = [
   { type: 'TEXT_IS', label: 'IS', textureName: 'Text_IS', isText: true },
   { type: 'TEXT_AND', label: 'AND', textureName: 'Text_AND', isText: true },
-  { type: 'TEXT_YOU', label: 'YOU', textureName: 'Text_YOU', isText: true },
-  { type: 'TEXT_WIN', label: 'WIN', textureName: 'Text_WIN', isText: true },
-  { type: 'TEXT_PUSH', label: 'PUSH', textureName: 'Text_PUSH', isText: true },
-  { type: 'TEXT_STOP', label: 'STOP', textureName: 'Text_STOP', isText: true },
-  { type: 'TEXT_LOVE', label: 'LOVE', textureName: 'Text_LOVE', isText: true },
-  { type: 'TEXT_HATE', label: 'HATE', textureName: 'Text_HATE', isText: true },
-  { type: 'TEXT_DEFEAT', label: 'DEFEAT', textureName: 'Text_DEFEAT', isText: true },
-  { type: 'eraser', label: 'Eraser', textureName: '' },
 ];
+
+const PROPERTY_PALETTE: PaletteItem[] = [
+  'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT',
+  'SINK', 'HOT', 'MELT', 'FLOAT', 'MOVE', 'OPEN', 'SHUT', 'WEAK',
+].map(name => ({ type: `TEXT_${name}`, label: name, textureName: `Text_${name}`, isText: true }));
+
+interface SavedMap {
+  id: string;
+  name: string;
+  updatedAt: number;
+  data: string;
+}
 
 function entityFallbackLabel(type: string, entity?: Entity): string {
   if (type.startsWith('TEXT_')) {
@@ -87,18 +96,23 @@ export function Editor() {
   const [selectedTool, setSelectedTool] = useState<PlaceTool>('BABA');
   const [levelName, setLevelName] = useState('My Level');
   const [isPainting, setIsPainting] = useState(false);
-  const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [savedMaps, setSavedMaps] = useState<SavedMap[]>(() => {
+    const stored = localStorage.getItem('editor-saved-maps');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [currentMapId, setCurrentMapId] = useState<string | null>(null);
 
   useEffect(() => {
-    const data = {
+    const levelData = {
       id: 'editor-temp',
       name: levelName,
       width: grid.width,
       height: grid.height,
       entities: Array.from(grid.entities.values()),
     };
-    localStorage.setItem('editor-grid', JSON.stringify(data));
+    const communityJson = levelToCommunityFormat(levelData);
+    localStorage.setItem('editor-grid', JSON.stringify(communityJson));
   }, [grid, levelName]);
 
   function resizeGrid(newWidth: number, newHeight: number) {
@@ -123,28 +137,23 @@ export function Editor() {
   }
 
   function paintCell(x: number, y: number) {
-    if (selectedTool === 'eraser') {
-      const cell = grid.cells[y][x];
-      const toRemove = [...cell.entities];
-      for (const id of toRemove) {
-        removeEntity(grid, id);
-      }
-      setGrid({ ...grid });
-    } else {
-      const cell = grid.cells[y][x];
-      const toRemove = [...cell.entities];
-      for (const id of toRemove) {
-        removeEntity(grid, id);
-      }
-
-      if (selectedTool === 'TEXT_WORD') {
-        setTextInput({ x, y, value: '' });
-      } else {
-        const entity = createEntity(selectedTool, { x, y });
-        addEntity(grid, entity);
-        setGrid({ ...grid });
-      }
+    const cell = grid.cells[y][x];
+    const toRemove = [...cell.entities];
+    for (const id of toRemove) {
+      removeEntity(grid, id);
     }
+
+    if (selectedTool === 'eraser') {
+      // just erase
+    } else if (selectedTool.startsWith('NOUN_')) {
+      const word = selectedTool.replace('NOUN_', '') as TextWord;
+      const entity = createEntity('TEXT_WORD', { x, y }, word);
+      addEntity(grid, entity);
+    } else {
+      const entity = createEntity(selectedTool, { x, y });
+      addEntity(grid, entity);
+    }
+    setGrid({ ...grid });
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -178,35 +187,76 @@ export function Editor() {
     setGrid({ ...grid });
   }
 
-  function handleTextSubmit(word: string) {
-    if (!textInput) return;
-    const upperWord = word.toUpperCase() as TextWord;
-    const validWords: TextWord[] = ['BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'YOU', 'WIN', 'PUSH', 'STOP', 'LOVE', 'HATE', 'DEFEAT'];
-    if (!validWords.includes(upperWord)) {
-      setTextInput(null);
-      return;
-    }
-    const cell = grid.cells[textInput.y][textInput.x];
-    const toRemove = [...cell.entities];
-    for (const id of toRemove) {
-      removeEntity(grid, id);
-    }
-    const entity = createEntity('TEXT_WORD', { x: textInput.x, y: textInput.y }, upperWord);
-    addEntity(grid, entity);
-    setGrid({ ...grid });
-    setTextInput(null);
-  }
-
-  function handleSave() {
-    // Export in community format
-    const levelData = {
-      id: 'custom',
+  function getLevelData() {
+    return {
+      id: currentMapId || 'custom',
       name: levelName,
       width: grid.width,
       height: grid.height,
       entities: Array.from(grid.entities.values()),
     };
-    const communityJson = levelToCommunityFormat(levelData);
+  }
+
+  function persistSavedMaps(maps: SavedMap[]) {
+    setSavedMaps(maps);
+    localStorage.setItem('editor-saved-maps', JSON.stringify(maps));
+  }
+
+  function handleSave() {
+    const communityJson = levelToCommunityFormat(getLevelData());
+    const json = JSON.stringify(communityJson);
+    const now = Date.now();
+
+    if (currentMapId) {
+      const updated = savedMaps.map(m =>
+        m.id === currentMapId ? { ...m, name: levelName, updatedAt: now, data: json } : m
+      );
+      persistSavedMaps(updated);
+    } else {
+      const id = crypto.randomUUID();
+      const newMap: SavedMap = { id, name: levelName, updatedAt: now, data: json };
+      persistSavedMaps([...savedMaps, newMap]);
+      setCurrentMapId(id);
+    }
+  }
+
+  function handleSaveAs() {
+    const communityJson = levelToCommunityFormat(getLevelData());
+    const json = JSON.stringify(communityJson);
+    const id = crypto.randomUUID();
+    const newMap: SavedMap = { id, name: levelName, updatedAt: Date.now(), data: json };
+    persistSavedMaps([...savedMaps, newMap]);
+    setCurrentMapId(id);
+  }
+
+  function handleLoadMap(id: string) {
+    const map = savedMaps.find(m => m.id === id);
+    if (!map) return;
+    try {
+      const data = JSON.parse(map.data);
+      const level = parseCommunityLevel(data as CommunityLevel);
+      const newGrid = createGrid(level.width, level.height);
+      for (const entity of level.entities) {
+        addEntity(newGrid, entity);
+      }
+      setGrid(newGrid);
+      setGridWidth(level.width);
+      setGridHeight(level.height);
+      setLevelName(level.name);
+      setCurrentMapId(id);
+    } catch {
+      alert('Failed to load map');
+    }
+  }
+
+  function handleDeleteMap(id: string) {
+    const updated = savedMaps.filter(m => m.id !== id);
+    persistSavedMaps(updated);
+    if (currentMapId === id) setCurrentMapId(null);
+  }
+
+  function handleExportJson() {
+    const communityJson = levelToCommunityFormat(getLevelData());
     const json = JSON.stringify(communityJson, null, 2);
     navigator.clipboard.writeText(json).then(() => {
       alert('Community format JSON copied to clipboard!');
@@ -221,7 +271,7 @@ export function Editor() {
     });
   }
 
-  function handleLoad() {
+  function handleImportJson() {
     const json = prompt('Paste level JSON (community or internal format):');
     if (!json) return;
     try {
@@ -232,14 +282,12 @@ export function Editor() {
       let name: string;
 
       if (data.thingsMap) {
-        // Community format
         const level = parseCommunityLevel(data as CommunityLevel);
         entities = level.entities;
         width = level.width;
         height = level.height;
         name = level.name;
       } else {
-        // Legacy internal format
         entities = data.entities;
         width = data.width;
         height = data.height;
@@ -254,7 +302,8 @@ export function Editor() {
       setGridWidth(width);
       setGridHeight(height);
       setLevelName(name);
-    } catch (e) {
+      setCurrentMapId(null);
+    } catch {
       alert('Invalid level JSON');
     }
   }
@@ -337,11 +386,24 @@ export function Editor() {
     return <div className="palette-swatch" style={{ backgroundColor: fallbackColor(item.type) }} />;
   }
 
+  function renderPaletteSection(items: PaletteItem[]) {
+    return items.map(item => (
+      <button
+        key={item.type + item.label}
+        className={`palette-item ${selectedTool === item.type ? 'selected' : ''}`}
+        onClick={() => setSelectedTool(item.type)}
+      >
+        {renderPaletteSwatch(item)}
+        <span>{item.label}</span>
+      </button>
+    ));
+  }
+
   return (
     <div className="editor-page">
       <div className="editor-topbar">
         <div className="topbar-left">
-          <a href="/play" className="back-link">Game</a>
+          <button className="back-link" onClick={() => navigate('/play')}>← Game</button>
         </div>
         <div className="topbar-center">
           <input
@@ -381,25 +443,32 @@ export function Editor() {
               }}
             />
           </label>
-          <button className="editor-btn" onClick={handleSave}>Save JSON</button>
-          <button className="editor-btn" onClick={handleLoad}>Load JSON</button>
+          <button className="editor-btn" onClick={handleSave}>Save</button>
+          <button className="editor-btn" onClick={handleSaveAs}>Save As</button>
+          <button className="editor-btn" onClick={handleExportJson}>Export</button>
+          <button className="editor-btn" onClick={handleImportJson}>Import</button>
           <button className="editor-btn play-btn" onClick={handlePlay}>Play</button>
         </div>
       </div>
 
       <div className="editor-main">
         <div className="palette">
-          <div className="palette-title">Elements</div>
-          {PALETTE.map(item => (
-            <button
-              key={item.type + item.label}
-              className={`palette-item ${selectedTool === item.type ? 'selected' : ''}`}
-              onClick={() => setSelectedTool(item.type)}
-            >
-              {renderPaletteSwatch(item)}
-              <span>{item.label}</span>
-            </button>
-          ))}
+          <div className="palette-section-title">Characters</div>
+          {renderPaletteSection(CHARACTER_PALETTE)}
+          <div className="palette-section-title">Nouns</div>
+          {renderPaletteSection(NOUN_PALETTE)}
+          <div className="palette-section-title">Operators</div>
+          {renderPaletteSection(OPERATOR_PALETTE)}
+          <div className="palette-section-title">Properties</div>
+          {renderPaletteSection(PROPERTY_PALETTE)}
+          <div className="palette-section-title">Tools</div>
+          <button
+            className={`palette-item ${selectedTool === 'eraser' ? 'selected' : ''}`}
+            onClick={() => setSelectedTool('eraser')}
+          >
+            <div className="palette-swatch" style={{ backgroundColor: '#ff0000' }} />
+            <span>Eraser</span>
+          </button>
         </div>
 
         <div className="canvas-container">
@@ -418,35 +487,20 @@ export function Editor() {
           >
             {renderCells()}
           </div>
-
-          {textInput && (
-            <div className="text-input-overlay">
-              <div className="text-input-modal">
-                <div className="text-input-title">Enter word:</div>
-                <div className="text-input-hint">BABA, WALL, ROCK, FLAG, CRAB, YOU, WIN, PUSH, STOP, LOVE, HATE, DEFEAT</div>
-                <input
-                  type="text"
-                  className="text-input-field"
-                  value={textInput.value}
-                  onChange={e => setTextInput({ ...textInput, value: e.target.value.toUpperCase() })}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleTextSubmit(textInput.value);
-                    if (e.key === 'Escape') setTextInput(null);
-                  }}
-                  autoFocus
-                  maxLength={6}
-                />
-                <div className="text-input-buttons">
-                  <button onClick={() => setTextInput(null)}>Cancel</button>
-                  <button onClick={() => handleTextSubmit(textInput.value)}>OK</button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="sidebar-right">
-          <div className="sidebar-title">Controls</div>
+          <div className="sidebar-title">Saved Maps</div>
+          <div className="saved-maps-list">
+            {savedMaps.map(map => (
+              <div key={map.id} className={`saved-map-item ${map.id === currentMapId ? 'active' : ''}`}>
+                <span className="saved-map-name" onClick={() => handleLoadMap(map.id)}>{map.name}</span>
+                <button className="saved-map-delete" onClick={() => handleDeleteMap(map.id)}>×</button>
+              </div>
+            ))}
+            {savedMaps.length === 0 && <div className="no-maps">No saved maps</div>}
+          </div>
+          <div className="sidebar-title" style={{ marginTop: '16px' }}>Controls</div>
           <div className="help-text">
             <p>Click to place</p>
             <p>Right-click to erase</p>

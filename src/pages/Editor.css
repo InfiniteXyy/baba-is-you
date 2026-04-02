@@ -30,6 +30,9 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: all 0.15s;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .back-link:hover {
@@ -149,15 +152,18 @@
   flex-direction: column;
   gap: 3px;
   border-radius: 2px;
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
 }
 
-.palette-title {
-  font-size: 0.65rem;
-  color: #888;
-  margin-bottom: 8px;
-  text-align: center;
+.palette-section-title {
+  font-size: 0.5rem;
+  color: #666;
+  margin: 8px 0 4px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  border-bottom: 1px solid #222;
+  padding-bottom: 4px;
 }
 
 .palette-item {
@@ -309,79 +315,58 @@
   margin: 4px 0;
 }
 
-/* Text Input Modal */
-.text-input-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+/* Saved Maps */
+.saved-maps-list {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.saved-map-item {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-
-.text-input-modal {
+  padding: 4px 6px;
   background: #1a1a3e;
-  border: 3px solid #ffd166;
-  padding: 24px 32px;
-  text-align: center;
-  border-radius: 4px;
-  box-shadow: 0 0 60px rgba(255, 209, 102, 0.15);
-}
-
-.text-input-title {
-  font-size: 0.8rem;
-  margin-bottom: 8px;
-  color: #ffd166;
-}
-
-.text-input-hint {
+  border: 1px solid transparent;
+  border-radius: 2px;
   font-size: 0.55rem;
-  color: #666;
-  margin-bottom: 16px;
-  line-height: 1.8;
 }
 
-.text-input-field {
-  background: #1a1a3e;
-  border: 2px solid #444;
-  color: #fff;
-  padding: 10px 16px;
-  font-size: 0.9rem;
-  text-align: center;
-  width: 180px;
-  font-family: inherit;
-  text-transform: uppercase;
-  letter-spacing: 2px;
+.saved-map-item.active {
+  border-color: #ff6b6b;
 }
 
-.text-input-field:focus {
-  outline: none;
-  border-color: #ffd166;
-}
-
-.text-input-buttons {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-.text-input-buttons button {
-  padding: 8px 20px;
-  background: #252550;
-  color: #ddd;
-  border: 2px solid #444;
+.saved-map-name {
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.15s;
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
 }
 
-.text-input-buttons button:hover {
-  background: #303060;
-  border-color: #ffd166;
+.saved-map-name:hover {
   color: #fff;
+}
+
+.saved-map-delete {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 4px;
+  font-family: inherit;
+}
+
+.saved-map-delete:hover {
+  color: #ff6b6b;
+}
+
+.no-maps {
+  font-size: 0.55rem;
+  color: #444;
+  text-align: center;
+  padding: 8px 0;
 }
