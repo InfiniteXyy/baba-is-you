@@ -24,6 +24,11 @@ function filterPatterns(patterns: QuickPattern[], query: string) {
   return query ? patterns.filter(p => p.label.toLowerCase().includes(query.toLowerCase())) : patterns;
 }
 
+const swatchClass = "w-7 h-7 shrink-0 rounded-[3px] [image-rendering:pixelated]";
+const paletteItemClass = "flex flex-col items-center gap-[3px] py-1 px-0.5 bg-[var(--color-bg-input)] border border-transparent text-[var(--color-text-subtle)] cursor-pointer text-[0.4rem] font-[inherit] text-center transition-all duration-100 rounded-[3px] hover:bg-[#1a1a1a] hover:border-[var(--color-border-hover)] hover:text-[var(--color-text-bright)]";
+const paletteGridClass = "grid grid-cols-[repeat(auto-fill,minmax(42px,1fr))] gap-[3px]";
+const sectionTitleClass = "text-[0.45rem] text-[#444] mt-1.5 mb-1 uppercase tracking-[2px]";
+
 function PaletteItemButton({ item, isSelected, onSelect, spriteSheet }: {
   item: PaletteItem;
   isSelected: boolean;
@@ -33,40 +38,31 @@ function PaletteItemButton({ item, isSelected, onSelect, spriteSheet }: {
   let swatch: React.JSX.Element;
 
   if (item.type === 'eraser') {
-    swatch = <div className="w-7 h-7 shrink-0 rounded [image-rendering:pixelated] flex items-center justify-center text-sm text-danger bg-[#1a0a0a] border border-[#331111]">✕</div>;
+    swatch = <div className={`${swatchClass} flex items-center justify-center text-sm text-[var(--color-danger)] bg-[#1a0a0a] border border-[#331111]`}>✕</div>;
   } else if (spriteSheet && item.textureName) {
     const url = getSpriteDataUrl(spriteSheet, item.textureName, 0, 28);
     swatch = url
-      ? <div className="w-7 h-7 shrink-0 rounded [image-rendering:pixelated]" style={{
+      ? <div className={swatchClass} style={{
           backgroundImage: `url(${url})`,
           backgroundSize: 'contain',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
           imageRendering: 'pixelated',
         }} />
-      : <div className="w-7 h-7 shrink-0 rounded [image-rendering:pixelated]" style={{ backgroundColor: fallbackColor(item.type) }} />;
+      : <div className={swatchClass} style={{ backgroundColor: fallbackColor(item.type) }} />;
   } else {
-    swatch = <div className="w-7 h-7 shrink-0 rounded [image-rendering:pixelated]" style={{ backgroundColor: fallbackColor(item.type) }} />;
+    swatch = <div className={swatchClass} style={{ backgroundColor: fallbackColor(item.type) }} />;
   }
 
   return (
     <button
-      className={`flex flex-col items-center gap-[3px] px-0.5 py-1 bg-bg-input border border-transparent text-text-subtle cursor-pointer text-[0.4rem] font-[inherit] text-center transition-all duration-100 rounded hover:bg-[#1a1a1a] hover:border-border-hover hover:text-text-bright ${isSelected ? '!bg-[#1a1a1a] !border-border-bright !text-white' : ''}`}
+      className={`${paletteItemClass} ${isSelected ? '!bg-[#1a1a1a] !border-[var(--color-border-bright)] !text-white' : ''}`}
       onClick={onSelect}
       title={item.label}
     >
       {swatch}
       <span className="overflow-hidden text-ellipsis whitespace-nowrap w-full">{item.label}</span>
     </button>
-  );
-}
-
-function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-1">
-      <div className="text-[0.45rem] text-border-active my-1 mt-1.5 uppercase tracking-[2px]">{title}</div>
-      {children}
-    </div>
   );
 }
 
@@ -80,26 +76,27 @@ export function EditorPalette({
   const filteredOperators = filterItems(OPERATOR_PALETTE, searchQuery);
   const filteredProperties = filterItems(PROPERTY_PALETTE, searchQuery);
 
-  const gridCls = 'grid grid-cols-[repeat(auto-fill,minmax(42px,1fr))] gap-[3px]';
+  const patternItemClass = "py-[5px] px-2 bg-[var(--color-bg-input)] border border-transparent text-[var(--color-text-subtle)] cursor-pointer text-[0.4rem] font-[inherit] text-left transition-all duration-100 rounded-[3px] whitespace-nowrap overflow-hidden text-ellipsis hover:bg-[#1a1a1a] hover:border-[var(--color-border-hover)] hover:text-[var(--color-text-bright)]";
 
   return (
-    <div className="bg-bg-panel border border-border p-2.5 flex flex-col gap-1 rounded overflow-y-auto overflow-x-hidden max-h-[calc(100vh-80px)] relative [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#222] [&::-webkit-scrollbar-thumb]:rounded-sm" style={{ width: paletteWidth }}>
+    <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] p-2.5 flex flex-col gap-1 rounded overflow-y-auto overflow-x-hidden max-h-[calc(100vh-80px)] relative [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#222] [&::-webkit-scrollbar-thumb]:rounded-sm" style={{ width: paletteWidth }}>
       <input
         type="text"
-        className="bg-bg-input border border-[#222] text-white px-2.5 py-[5px] text-[0.55rem] w-full font-[inherit] tracking-[1px] rounded mb-2 focus:outline-none focus:border-border-active"
+        className="bg-[var(--color-bg-input)] border border-[#222] text-white py-[5px] px-2.5 text-[0.55rem] w-full font-[inherit] tracking-[1px] rounded-[3px] mb-2 box-border focus:outline-none focus:border-[var(--color-border-active)]"
         placeholder="Search..."
         value={searchQuery}
         onChange={e => setSearchQuery(e.target.value)}
       />
       {filteredPatterns.length > 0 && (
-        <PaletteSection title="Quick Rules">
+        <div className="mb-1">
+          <div className={sectionTitleClass}>Quick Rules</div>
           <div className="flex flex-col gap-0.5">
             {filteredPatterns.map((p) => {
               const originalIdx = QUICK_PATTERNS.indexOf(p);
               return (
                 <button
                   key={originalIdx}
-                  className={`px-2 py-[5px] bg-bg-input border border-transparent text-text-subtle cursor-pointer text-[0.4rem] font-[inherit] text-left transition-all duration-100 rounded whitespace-nowrap overflow-hidden text-ellipsis hover:bg-[#1a1a1a] hover:border-border-hover hover:text-text-bright ${selectedTool === `PATTERN_${originalIdx}` ? '!bg-[#1a1a1a] !border-border-bright !text-white' : ''}`}
+                  className={`${patternItemClass} ${selectedTool === `PATTERN_${originalIdx}` ? '!bg-[#1a1a1a] !border-[var(--color-border-bright)] !text-white' : ''}`}
                   onClick={() => setSelectedTool(`PATTERN_${originalIdx}`)}
                 >
                   {p.label}
@@ -107,46 +104,75 @@ export function EditorPalette({
               );
             })}
           </div>
-        </PaletteSection>
+        </div>
       )}
       {filteredCharacters.length > 0 && (
-        <PaletteSection title="Characters">
-          <div className={gridCls}>
+        <div className="mb-1">
+          <div className={sectionTitleClass}>Characters</div>
+          <div className={paletteGridClass}>
             {filteredCharacters.map(item => (
-              <PaletteItemButton key={item.type} item={item} isSelected={selectedTool === item.type} onSelect={() => setSelectedTool(item.type)} spriteSheet={spriteSheet} />
+              <PaletteItemButton
+                key={item.type}
+                item={item}
+                isSelected={selectedTool === item.type}
+                onSelect={() => setSelectedTool(item.type)}
+                spriteSheet={spriteSheet}
+              />
             ))}
           </div>
-        </PaletteSection>
+        </div>
       )}
       {filteredNouns.length > 0 && (
-        <PaletteSection title="Nouns">
-          <div className={gridCls}>
+        <div className="mb-1">
+          <div className={sectionTitleClass}>Nouns</div>
+          <div className={paletteGridClass}>
             {filteredNouns.map(item => (
-              <PaletteItemButton key={item.type} item={item} isSelected={selectedTool === item.type} onSelect={() => setSelectedTool(item.type)} spriteSheet={spriteSheet} />
+              <PaletteItemButton
+                key={item.type}
+                item={item}
+                isSelected={selectedTool === item.type}
+                onSelect={() => setSelectedTool(item.type)}
+                spriteSheet={spriteSheet}
+              />
             ))}
           </div>
-        </PaletteSection>
+        </div>
       )}
       {filteredOperators.length > 0 && (
-        <PaletteSection title="Operators">
-          <div className={gridCls}>
+        <div className="mb-1">
+          <div className={sectionTitleClass}>Operators</div>
+          <div className={paletteGridClass}>
             {filteredOperators.map(item => (
-              <PaletteItemButton key={item.type} item={item} isSelected={selectedTool === item.type} onSelect={() => setSelectedTool(item.type)} spriteSheet={spriteSheet} />
+              <PaletteItemButton
+                key={item.type}
+                item={item}
+                isSelected={selectedTool === item.type}
+                onSelect={() => setSelectedTool(item.type)}
+                spriteSheet={spriteSheet}
+              />
             ))}
           </div>
-        </PaletteSection>
+        </div>
       )}
       {filteredProperties.length > 0 && (
-        <PaletteSection title="Properties">
-          <div className={gridCls}>
+        <div className="mb-1">
+          <div className={sectionTitleClass}>Properties</div>
+          <div className={paletteGridClass}>
             {filteredProperties.map(item => (
-              <PaletteItemButton key={item.type} item={item} isSelected={selectedTool === item.type} onSelect={() => setSelectedTool(item.type)} spriteSheet={spriteSheet} />
+              <PaletteItemButton
+                key={item.type}
+                item={item}
+                isSelected={selectedTool === item.type}
+                onSelect={() => setSelectedTool(item.type)}
+                spriteSheet={spriteSheet}
+              />
             ))}
           </div>
-        </PaletteSection>
+        </div>
       )}
-      <PaletteSection title="Tools">
-        <div className={gridCls}>
+      <div className="mb-1">
+        <div className={sectionTitleClass}>Tools</div>
+        <div className={paletteGridClass}>
           <PaletteItemButton
             item={{ type: 'eraser', label: 'Eraser', textureName: '' }}
             isSelected={selectedTool === 'eraser'}
@@ -154,8 +180,8 @@ export function EditorPalette({
             spriteSheet={spriteSheet}
           />
         </div>
-      </PaletteSection>
-      <div className="absolute top-0 -right-[3px] w-1.5 h-full cursor-col-resize bg-transparent transition-[background] duration-150 z-10 hover:bg-border-hover" onMouseDown={() => setIsResizing(true)} />
+      </div>
+      <div className="absolute top-0 -right-[3px] w-1.5 h-full cursor-col-resize bg-transparent transition-[background] duration-150 z-10 hover:bg-[var(--color-border-hover)]" onMouseDown={() => setIsResizing(true)} />
     </div>
   );
 }

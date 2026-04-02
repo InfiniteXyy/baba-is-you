@@ -15,13 +15,16 @@ interface EditorCanvasProps {
   gridRef: React.RefObject<HTMLDivElement | null>;
 }
 
+const entityClass = "absolute inset-0 flex items-center justify-center font-bold text-[10px] text-black rounded-sm";
+const cellClass = "w-7 h-7 flex items-center justify-center bg-[#0a0a0a] relative";
+
 function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) {
   const spriteUrl = sheet ? getSpriteDataUrl(sheet, e.textureName, 0, size) : null;
   if (spriteUrl) {
     return (
       <div
         key={e.id}
-        className="absolute inset-0 flex items-center justify-center font-bold text-[10px] text-black rounded-sm !bg-transparent [image-rendering:pixelated]"
+        className={`${entityClass} !bg-transparent [image-rendering:pixelated]`}
         style={{
           backgroundImage: `url(${spriteUrl})`,
           backgroundSize: 'contain',
@@ -34,7 +37,7 @@ function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) 
   return (
     <div
       key={e.id}
-      className="absolute inset-0 flex items-center justify-center font-bold rounded-sm"
+      className={entityClass}
       style={{ backgroundColor: fallbackColor(e.type), fontSize: '8px', color: '#000' }}
     >
       {e.type.startsWith('TEXT_') ? (e.word || e.type.slice(5)) : e.type.charAt(0)}
@@ -50,11 +53,11 @@ function renderCells(grid: Grid, spriteSheet: SpriteSheet | null) {
       const key = `${x}-${y}`;
 
       if (cell.entities.length === 0) {
-        cells.push(<div key={key} className="w-7 h-7 flex items-center justify-center bg-[#0a0a0a] relative" />);
+        cells.push(<div key={key} className={cellClass} />);
       } else {
         const allEntities = cell.entities.map(id => grid.entities.get(id)!).filter(e => e);
         cells.push(
-          <div key={key} className="w-7 h-7 flex items-center justify-center bg-[#0a0a0a] relative">
+          <div key={key} className={cellClass}>
             {allEntities.map(e => renderEntitySprite(e, spriteSheet, CELL_SIZE))}
           </div>
         );
@@ -72,7 +75,7 @@ export function EditorCanvas({
     <div className="flex-1 flex justify-center items-start relative">
       <div
         ref={gridRef}
-        className="grid gap-px bg-[#060606] p-px cursor-crosshair select-none border-2 border-border rounded"
+        className="grid gap-px bg-[#060606] p-px cursor-crosshair select-none border-2 border-[var(--color-border)] rounded-[3px]"
         style={{
           gridTemplateColumns: `repeat(${grid.width}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${grid.height}, ${cellSize}px)`,

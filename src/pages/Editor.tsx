@@ -431,28 +431,30 @@ export function Editor() {
     setRenamingId(null);
   }
 
-  const editorBtnCls = 'px-2.5 py-1 bg-bg-input border border-border text-text-soft cursor-pointer text-[0.55rem] font-[inherit] tracking-[1px] transition-all duration-100 rounded hover:bg-[#1a1a1a] hover:border-border-hover hover:text-text-bright';
+  const editorBtnClass = "px-2.5 py-1.5 bg-[var(--color-bg-input)] text-[var(--color-text-soft)] border border-[#222] cursor-pointer font-[inherit] text-[0.55rem] uppercase tracking-[1px] transition-all duration-150 rounded-[3px] hover:bg-[#1a1a1a] hover:border-[var(--color-border-active)] hover:text-white";
+  const gridSizeLabelClass = "flex items-center gap-1 text-[0.5rem] text-[var(--color-text-muted)] tracking-[1px]";
+  const gridSizeInputClass = "bg-[var(--color-bg-input)] border border-[#222] text-white py-[5px] px-1 text-[0.6rem] text-center w-[42px] font-[inherit] rounded-[3px] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none focus:border-[var(--color-border-active)]";
 
   return (
-    <div className="flex flex-col h-screen bg-bg-dark overflow-hidden font-retro">
-      <div className="flex items-center justify-between px-3 py-2 bg-bg-panel border-b border-border shrink-0">
-        <div className="flex items-center gap-2">
-          <button className="bg-transparent border-none text-text-subtle cursor-pointer text-[0.55rem] font-[inherit] tracking-[1px] transition-colors duration-100 hover:text-text-bright" onClick={() => navigate('/play')}>← Game</button>
+    <div className="min-h-screen bg-[var(--color-bg-dark)] text-[var(--color-text-white)] flex flex-col font-[var(--font-retro)]">
+      <div className="flex justify-between items-center px-5 py-2.5 bg-[var(--color-bg-panel)] border-b border-[var(--color-border)]">
+        <div className="shrink-0">
+          <button className="text-[var(--color-text-subtle)] px-3 py-1.5 border border-[#222] text-[0.6rem] uppercase tracking-[1px] transition-all duration-150 bg-transparent cursor-pointer font-[inherit] rounded-[3px] hover:text-white hover:border-[var(--color-border-active)] hover:bg-[#1a1a1a]" onClick={() => navigate('/play')}>← Game</button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex-1 flex items-center justify-center gap-4">
           <input
             type="text"
-            className="bg-bg-input border border-border text-white px-3 py-1 text-[0.6rem] w-[160px] font-[inherit] tracking-[1px] rounded focus:outline-none focus:border-border-active"
+            className="bg-[var(--color-bg-input)] border border-[#222] text-white px-3.5 py-1.5 text-[0.65rem] text-center w-[200px] font-[inherit] tracking-[1px] rounded-[3px] focus:outline-none focus:border-[var(--color-border-active)]"
             value={levelName}
             onChange={e => setLevelName(e.target.value)}
             placeholder="Level name"
           />
-          <div className="flex items-center gap-1 text-[0.5rem] text-text-subtle">
-            <label className="flex items-center gap-[3px]">
+          <div className="flex gap-2 items-center">
+            <label className={gridSizeLabelClass}>
               W
               <input
                 type="number"
-                className="w-[36px] bg-bg-input border border-border text-white px-1 py-0.5 text-[0.5rem] text-center font-[inherit] rounded focus:outline-none focus:border-border-active"
+                className={gridSizeInputClass}
                 min={5}
                 max={30}
                 value={gridWidth}
@@ -462,11 +464,11 @@ export function Editor() {
                 }}
               />
             </label>
-            <label className="flex items-center gap-[3px]">
+            <label className={gridSizeLabelClass}>
               H
               <input
                 type="number"
-                className="w-[36px] bg-bg-input border border-border text-white px-1 py-0.5 text-[0.5rem] text-center font-[inherit] rounded focus:outline-none focus:border-border-active"
+                className={gridSizeInputClass}
                 min={5}
                 max={20}
                 value={gridHeight}
@@ -478,16 +480,16 @@ export function Editor() {
             </label>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button className={editorBtnCls} onClick={handleNew}>New</button>
-          <button className={editorBtnCls} onClick={handleExportJson}>Export</button>
-          <button className={editorBtnCls} onClick={handleImportJson}>Import</button>
-          <button className={editorBtnCls} onClick={handleShare}>Share</button>
-          <button className={`${editorBtnCls} !bg-[#1a3a1a] !border-[#2a5a2a] hover:!bg-[#2a4a2a]`} onClick={handlePlay}>▶ Play</button>
+        <div className="shrink-0 flex gap-1.5 items-center">
+          <button className={editorBtnClass} onClick={handleNew}>New</button>
+          <button className={editorBtnClass} onClick={handleExportJson}>Export</button>
+          <button className={editorBtnClass} onClick={handleImportJson}>Import</button>
+          <button className={editorBtnClass} onClick={handleShare}>Share</button>
+          <button className={`${editorBtnClass} !bg-[#0a1a0f] !border-[#1a3a22] !text-[var(--color-accent-green)] hover:!bg-[#0f2a18] hover:!border-[#3a6a44]`} onClick={handlePlay}>▶ Play</button>
         </div>
       </div>
 
-      <div className="flex flex-1 gap-2.5 p-2.5 overflow-hidden">
+      <div className="flex-1 flex p-4 gap-4 justify-center">
         <EditorPalette
           paletteWidth={paletteWidth}
           searchQuery={searchQuery}
