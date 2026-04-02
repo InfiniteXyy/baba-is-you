@@ -691,9 +691,8 @@ export function Editor() {
               {renderPaletteItem({ type: 'eraser', label: 'Eraser', textureName: '' })}
             </div>
           </div>
+          <div className="resize-handle" onMouseDown={() => setIsResizing(true)} />
         </div>
-
-        <div className="resize-handle" onMouseDown={() => setIsResizing(true)} />
 
         <div className="canvas-container">
           <div
