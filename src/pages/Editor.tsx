@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Grid, createGrid, addEntity, removeEntity } from '../engine/grid';
 import { createEntity, Entity, TextWord } from '../engine/entities';
 import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
@@ -109,6 +109,7 @@ function fallbackColor(type: string): string {
 
 export function Editor() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const spriteSheet = useSprites();
   const [savedMaps, setSavedMaps] = useState<SavedMap[]>(() => {
     const stored = localStorage.getItem('editor-saved-maps');
@@ -125,8 +126,55 @@ export function Editor() {
   const [paletteWidth, setPaletteWidth] = useState(240);
   const [isResizing, setIsResizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sharedMapPopup, setSharedMapPopup] = useState<{ data: CommunityLevel } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Refs for auto-save to avoid recreating callbacks
+  const gridRef2 = useRef(grid);
+  const levelNameRef = useRef(levelName);
+  const currentMapIdRef = useRef(currentMapId);
+  const savedMapsRef = useRef(savedMaps);
+  gridRef2.current = grid;
+  levelNameRef.current = levelName;
+  currentMapIdRef.current = currentMapId;
+  savedMapsRef.current = savedMaps;
+
+  // Load shared map from URL
+  useEffect(() => {
+    const mapData = searchParams.get('map');
+    if (mapData) {
+      try {
+        const json = decodeURIComponent(atob(mapData));
+        const parsed = JSON.parse(json) as CommunityLevel;
+        setSharedMapPopup({ data: parsed });
+      } catch (e) {
+        console.error('Failed to decode shared map:', e);
+      }
+    }
+  }, []);
+
+  function loadSharedMap(data: CommunityLevel) {
+    const level = parseCommunityLevel(data);
+    const newGrid = createGrid(level.width, level.height);
+    for (const entity of level.entities) {
+      addEntity(newGrid, entity);
+    }
+    setGrid(newGrid);
+    setGridWidth(level.width);
+    setGridHeight(level.height);
+    setLevelName(level.name);
+    setCurrentMapId(null);
+    setSharedMapPopup(null);
+    // Clear the map param from URL
+    navigate('/editor', { replace: true });
+  }
+
+  function playSharedMap(data: CommunityLevel) {
+    const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+    setSharedMapPopup(null);
+    navigate(`/play?map=${encoded}`);
+  }
 
   // Resizable palette
   useEffect(() => {
@@ -150,55 +198,46 @@ export function Editor() {
   const filterPatterns = (patterns: QuickPattern[]) =>
     searchQuery ? patterns.filter(p => p.label.toLowerCase().includes(searchQuery.toLowerCase())) : patterns;
 
-  // Auto-save to editor-grid for Play route
+  // Debounced auto-save (uses refs to avoid re-triggering)
   useEffect(() => {
-    const levelData = {
-      id: 'editor-temp',
-      name: levelName,
-      width: grid.width,
-      height: grid.height,
-      entities: Array.from(grid.entities.values()),
-    };
-    const communityJson = levelToCommunityFormat(levelData);
-    localStorage.setItem('editor-grid', JSON.stringify(communityJson));
-  }, [grid, levelName]);
-
-  // Auto-save current map to localStorage (debounced)
-  const autoSave = useCallback(() => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      const levelData = {
-        id: currentMapId || 'custom',
-        name: levelName,
-        width: grid.width,
-        height: grid.height,
-        entities: Array.from(grid.entities.values()),
+      const g = gridRef2.current;
+      const name = levelNameRef.current;
+      const mapId = currentMapIdRef.current;
+
+      // Save editor-grid for Play route
+      const tempData = {
+        id: 'editor-temp', name, width: g.width, height: g.height,
+        entities: Array.from(g.entities.values()),
       };
-      const communityJson = levelToCommunityFormat(levelData);
+      localStorage.setItem('editor-grid', JSON.stringify(levelToCommunityFormat(tempData)));
+
+      // Auto-save to saved maps
+      const communityJson = levelToCommunityFormat({
+        id: mapId || 'custom', name, width: g.width, height: g.height,
+        entities: Array.from(g.entities.values()),
+      });
       const json = JSON.stringify(communityJson);
       const now = Date.now();
 
       setSavedMaps(prev => {
         let updated: SavedMap[];
-        if (currentMapId) {
+        if (mapId) {
           updated = prev.map(m =>
-            m.id === currentMapId ? { ...m, name: levelName, updatedAt: now, data: json } : m
+            m.id === mapId ? { ...m, name, updatedAt: now, data: json } : m
           );
         } else {
           const id = crypto.randomUUID();
           setCurrentMapId(id);
-          updated = [...prev, { id, name: levelName, updatedAt: now, data: json }];
+          updated = [...prev, { id, name, updatedAt: now, data: json }];
         }
         localStorage.setItem('editor-saved-maps', JSON.stringify(updated));
         return updated;
       });
-    }, 800);
-  }, [currentMapId, grid, levelName]);
-
-  useEffect(() => {
-    autoSave();
+    }, 600);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [grid, levelName, autoSave]);
+  }, [grid, levelName]);
 
   function handleNew() {
     const newGrid = createGrid(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -410,7 +449,7 @@ export function Editor() {
     };
     const communityJson = levelToCommunityFormat(levelData);
     const encoded = btoa(encodeURIComponent(JSON.stringify(communityJson)));
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/play?map=${encoded}`;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/editor?map=${encoded}`;
     navigator.clipboard.writeText(url).then(() => {
       alert('Share link copied!');
     });
@@ -695,6 +734,21 @@ export function Editor() {
           </div>
         </div>
       </div>
+
+      {sharedMapPopup && (
+        <div className="shared-map-overlay">
+          <div className="shared-map-modal">
+            <h2>Shared Map</h2>
+            <p className="shared-map-name">{sharedMapPopup.data.name}</p>
+            <p className="shared-map-info">{sharedMapPopup.data.sceneWidth}×{sharedMapPopup.data.sceneHeight}</p>
+            <div className="shared-map-buttons">
+              <button onClick={() => loadSharedMap(sharedMapPopup.data)}>Edit</button>
+              <button onClick={() => playSharedMap(sharedMapPopup.data)}>▶ Play</button>
+              <button onClick={() => { setSharedMapPopup(null); navigate('/editor', { replace: true }); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
