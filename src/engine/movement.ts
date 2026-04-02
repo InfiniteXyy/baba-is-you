@@ -206,11 +206,6 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       if (destProps.isHot && youProps.isMelt) {
         destroys.push(you.id);
       }
-      // OPEN + SHUT: if YOU is OPEN and dest is SHUT (or vice versa), both destroyed
-      if ((youProps.isOpen && destProps.isShut) || (youProps.isShut && destProps.isOpen)) {
-        destroys.push(you.id);
-        destroys.push(dest.id);
-      }
     }
 
     moves.push({ entityId: you.id, from: you.position, to: newPos });
@@ -238,7 +233,7 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
     }
   }
 
-  // Post-move: SINK — any SINK entity sharing a cell with a non-SINK entity destroys both
+  // Post-move: SINK — any SINK entity sharing a cell with a non-SINK, non-FLOAT entity destroys both
   const sinkDestroys = new Set<string>();
   for (const entity of newGrid.entities.values()) {
     const props = getPropertiesForType(rules, entity.type);
@@ -246,13 +241,57 @@ export function tick(grid: Grid, dir: Direction): GameTickResult {
       const others = getEntitiesAt(newGrid, entity.position);
       for (const other of others) {
         if (other.id !== entity.id) {
-          sinkDestroys.add(entity.id);
-          sinkDestroys.add(other.id);
+          const otherProps = getPropertiesForType(rules, other.type);
+          if (!otherProps.isFloat) {
+            sinkDestroys.add(entity.id);
+            sinkDestroys.add(other.id);
+          }
         }
       }
     }
   }
   for (const id of sinkDestroys) {
+    removeEntity(newGrid, id);
+  }
+
+  // Post-move: OPEN + SHUT — any OPEN entity sharing a cell with a SHUT entity destroys both
+  const openShutDestroys = new Set<string>();
+  for (const entity of newGrid.entities.values()) {
+    const props = getPropertiesForType(rules, entity.type);
+    if (props.isOpen) {
+      const others = getEntitiesAt(newGrid, entity.position);
+      for (const other of others) {
+        if (other.id !== entity.id) {
+          const otherProps = getPropertiesForType(rules, other.type);
+          if (otherProps.isShut) {
+            openShutDestroys.add(entity.id);
+            openShutDestroys.add(other.id);
+          }
+        }
+      }
+    }
+  }
+  for (const id of openShutDestroys) {
+    removeEntity(newGrid, id);
+  }
+
+  // Post-move: HOT + MELT — any HOT entity sharing a cell with a MELT entity destroys the MELT entity
+  const hotMeltDestroys = new Set<string>();
+  for (const entity of newGrid.entities.values()) {
+    const props = getPropertiesForType(rules, entity.type);
+    if (props.isHot) {
+      const others = getEntitiesAt(newGrid, entity.position);
+      for (const other of others) {
+        if (other.id !== entity.id) {
+          const otherProps = getPropertiesForType(rules, other.type);
+          if (otherProps.isMelt) {
+            hotMeltDestroys.add(other.id);
+          }
+        }
+      }
+    }
+  }
+  for (const id of hotMeltDestroys) {
     removeEntity(newGrid, id);
   }
 

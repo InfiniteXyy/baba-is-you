@@ -6,9 +6,9 @@ import { useSprites, getSpriteDataUrl, SpriteSheet } from '../data/sprites';
 import { parseCommunityLevel, levelToCommunityFormat, CommunityLevel } from '../data/communityLevel';
 import './Editor.css';
 
-const CELL_SIZE = 32;
-const DEFAULT_WIDTH = 15;
-const DEFAULT_HEIGHT = 11;
+const CELL_SIZE = 28;
+const DEFAULT_WIDTH = 24;
+const DEFAULT_HEIGHT = 18;
 
 type PlaceTool = string;
 
@@ -19,6 +19,54 @@ interface PaletteItem {
   isText?: boolean;
   word?: TextWord;
 }
+
+interface QuickPattern {
+  label: string;
+  entities: { type: string; word?: string; offsetX: number }[];
+}
+
+const QUICK_PATTERNS: QuickPattern[] = [
+  { label: 'BABA IS YOU', entities: [
+    { type: 'TEXT_WORD', word: 'BABA', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_YOU', offsetX: 2 },
+  ]},
+  { label: 'WALL IS STOP', entities: [
+    { type: 'TEXT_WORD', word: 'WALL', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_STOP', offsetX: 2 },
+  ]},
+  { label: 'ROCK IS PUSH', entities: [
+    { type: 'TEXT_WORD', word: 'ROCK', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_PUSH', offsetX: 2 },
+  ]},
+  { label: 'FLAG IS WIN', entities: [
+    { type: 'TEXT_WORD', word: 'FLAG', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_WIN', offsetX: 2 },
+  ]},
+  { label: 'WATER IS SINK', entities: [
+    { type: 'TEXT_WORD', word: 'WATER', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_SINK', offsetX: 2 },
+  ]},
+  { label: 'KEY IS OPEN', entities: [
+    { type: 'TEXT_WORD', word: 'KEY', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_OPEN', offsetX: 2 },
+  ]},
+  { label: 'DOOR IS SHUT', entities: [
+    { type: 'TEXT_WORD', word: 'DOOR', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_SHUT', offsetX: 2 },
+  ]},
+  { label: 'LAVA IS HOT', entities: [
+    { type: 'TEXT_WORD', word: 'LAVA', offsetX: 0 },
+    { type: 'TEXT_IS', offsetX: 1 },
+    { type: 'TEXT_HOT', offsetX: 2 },
+  ]},
+];
 
 const CHARACTER_PALETTE: PaletteItem[] = [
   'BABA', 'WALL', 'ROCK', 'FLAG', 'CRAB', 'WATER', 'LAVA', 'GRASS', 'FLOWER',
@@ -73,8 +121,34 @@ export function Editor() {
   const [selectedTool, setSelectedTool] = useState<PlaceTool>('BABA');
   const [levelName, setLevelName] = useState('My Level');
   const [isPainting, setIsPainting] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [paletteWidth, setPaletteWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const gridRef = useRef<HTMLDivElement>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resizable palette
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMove = (e: MouseEvent) => {
+      const newWidth = Math.max(160, Math.min(400, e.clientX - 16));
+      setPaletteWidth(newWidth);
+    };
+    const handleUp = () => setIsResizing(false);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [isResizing]);
+
+  const filterItems = (items: PaletteItem[]) =>
+    searchQuery ? items.filter(i => i.label.toLowerCase().includes(searchQuery.toLowerCase())) : items;
+
+  const filterPatterns = (patterns: QuickPattern[]) =>
+    searchQuery ? patterns.filter(p => p.label.toLowerCase().includes(searchQuery.toLowerCase())) : patterns;
 
   // Auto-save to editor-grid for Play route
   useEffect(() => {
@@ -157,6 +231,23 @@ export function Editor() {
   }
 
   function paintCell(x: number, y: number) {
+    if (selectedTool.startsWith('PATTERN_')) {
+      const patternIdx = parseInt(selectedTool.replace('PATTERN_', ''));
+      const pattern = QUICK_PATTERNS[patternIdx];
+      if (pattern) {
+        for (const p of pattern.entities) {
+          const px = x + p.offsetX;
+          if (px >= grid.width) continue;
+          const pCell = grid.cells[y][px];
+          for (const id of [...pCell.entities]) removeEntity(grid, id);
+          const entity = createEntity(p.type, { x: px, y }, p.word as any);
+          addEntity(grid, entity);
+        }
+      }
+      setGrid({ ...grid });
+      return;
+    }
+
     const cell = grid.cells[y][x];
     const toRemove = [...cell.entities];
     for (const id of toRemove) {
@@ -297,7 +388,41 @@ export function Editor() {
   }
 
   function handlePlay() {
-    navigate('/play?level=editor-temp');
+    const levelData = {
+      id: currentMapId || 'editor-temp',
+      name: levelName,
+      width: grid.width,
+      height: grid.height,
+      entities: Array.from(grid.entities.values()),
+    };
+    const communityJson = levelToCommunityFormat(levelData);
+    const encoded = btoa(encodeURIComponent(JSON.stringify(communityJson)));
+    navigate(`/play?map=${encoded}`);
+  }
+
+  function handleShare() {
+    const levelData = {
+      id: currentMapId || 'custom',
+      name: levelName,
+      width: grid.width,
+      height: grid.height,
+      entities: Array.from(grid.entities.values()),
+    };
+    const communityJson = levelToCommunityFormat(levelData);
+    const encoded = btoa(encodeURIComponent(JSON.stringify(communityJson)));
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/play?map=${encoded}`;
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Share link copied!');
+    });
+  }
+
+  function handleRename(id: string, newName: string) {
+    const updated = savedMaps.map(m =>
+      m.id === id ? { ...m, name: newName } : m
+    );
+    setSavedMaps(updated);
+    localStorage.setItem('editor-saved-maps', JSON.stringify(updated));
+    setRenamingId(null);
   }
 
   function renderEntitySprite(e: Entity, sheet: SpriteSheet | null, size: number) {
@@ -432,36 +557,71 @@ export function Editor() {
           <button className="editor-btn" onClick={handleNew}>New</button>
           <button className="editor-btn" onClick={handleExportJson}>Export</button>
           <button className="editor-btn" onClick={handleImportJson}>Import</button>
+          <button className="editor-btn" onClick={handleShare}>Share</button>
           <button className="editor-btn play-btn" onClick={handlePlay}>▶ Play</button>
         </div>
       </div>
 
       <div className="editor-main">
-        <div className="palette">
-          <div className="palette-section">
-            <div className="palette-section-title">Characters</div>
-            <div className="palette-grid">
-              {CHARACTER_PALETTE.map(item => renderPaletteItem(item))}
+        <div className="palette" style={{ width: paletteWidth }}>
+          <input
+            type="text"
+            className="palette-search"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {filterPatterns(QUICK_PATTERNS).length > 0 && (
+            <div className="palette-section">
+              <div className="palette-section-title">Quick Rules</div>
+              <div className="pattern-list">
+                {filterPatterns(QUICK_PATTERNS).map((p) => {
+                  const originalIdx = QUICK_PATTERNS.indexOf(p);
+                  return (
+                    <button
+                      key={originalIdx}
+                      className={`pattern-item ${selectedTool === `PATTERN_${originalIdx}` ? 'selected' : ''}`}
+                      onClick={() => setSelectedTool(`PATTERN_${originalIdx}`)}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-          <div className="palette-section">
-            <div className="palette-section-title">Nouns</div>
-            <div className="palette-grid">
-              {NOUN_PALETTE.map(item => renderPaletteItem(item))}
+          )}
+          {filterItems(CHARACTER_PALETTE).length > 0 && (
+            <div className="palette-section">
+              <div className="palette-section-title">Characters</div>
+              <div className="palette-grid">
+                {filterItems(CHARACTER_PALETTE).map(item => renderPaletteItem(item))}
+              </div>
             </div>
-          </div>
-          <div className="palette-section">
-            <div className="palette-section-title">Operators</div>
-            <div className="palette-grid">
-              {OPERATOR_PALETTE.map(item => renderPaletteItem(item))}
+          )}
+          {filterItems(NOUN_PALETTE).length > 0 && (
+            <div className="palette-section">
+              <div className="palette-section-title">Nouns</div>
+              <div className="palette-grid">
+                {filterItems(NOUN_PALETTE).map(item => renderPaletteItem(item))}
+              </div>
             </div>
-          </div>
-          <div className="palette-section">
-            <div className="palette-section-title">Properties</div>
-            <div className="palette-grid">
-              {PROPERTY_PALETTE.map(item => renderPaletteItem(item))}
+          )}
+          {filterItems(OPERATOR_PALETTE).length > 0 && (
+            <div className="palette-section">
+              <div className="palette-section-title">Operators</div>
+              <div className="palette-grid">
+                {filterItems(OPERATOR_PALETTE).map(item => renderPaletteItem(item))}
+              </div>
             </div>
-          </div>
+          )}
+          {filterItems(PROPERTY_PALETTE).length > 0 && (
+            <div className="palette-section">
+              <div className="palette-section-title">Properties</div>
+              <div className="palette-grid">
+                {filterItems(PROPERTY_PALETTE).map(item => renderPaletteItem(item))}
+              </div>
+            </div>
+          )}
           <div className="palette-section">
             <div className="palette-section-title">Tools</div>
             <div className="palette-grid">
@@ -469,6 +629,8 @@ export function Editor() {
             </div>
           </div>
         </div>
+
+        <div className="resize-handle" onMouseDown={() => setIsResizing(true)} />
 
         <div className="canvas-container">
           <div
@@ -497,8 +659,24 @@ export function Editor() {
                 key={map.id}
                 className={`saved-map-item ${map.id === currentMapId ? 'active' : ''}`}
                 onClick={() => handleLoadMap(map.id)}
+                onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(map.id); }}
               >
-                <span className="saved-map-name">{map.name}</span>
+                {renamingId === map.id ? (
+                  <input
+                    className="saved-map-rename-input"
+                    defaultValue={map.name}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleRename(map.id, (e.target as HTMLInputElement).value);
+                      }
+                    }}
+                    onBlur={(e) => handleRename(map.id, e.target.value)}
+                  />
+                ) : (
+                  <span className="saved-map-name">{map.name}</span>
+                )}
                 <button
                   className="saved-map-delete"
                   onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id); }}

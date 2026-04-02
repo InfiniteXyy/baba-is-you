@@ -109,7 +109,17 @@ export function Play() {
 
   useEffect(() => {
     const levelId = searchParams.get('level');
-    if (levelId) {
+    const mapData = searchParams.get('map');
+    if (mapData) {
+      try {
+        const json = decodeURIComponent(atob(mapData));
+        const parsed = JSON.parse(json);
+        const lvl = parseCommunityLevel(parsed as CommunityLevel);
+        startLevel(lvl);
+      } catch (e) {
+        console.error('Failed to load shared map:', e);
+      }
+    } else if (levelId) {
       const lvl = levelId === 'editor-temp' ? null : getLevelById(levelId);
       if (lvl) {
         startLevel(lvl);
