@@ -109,13 +109,15 @@ function fallbackColor(type: string): string {
 
 export function Editor() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const spriteSheet = useSprites();
   const [savedMaps, setSavedMaps] = useState<SavedMap[]>(() => {
     const stored = localStorage.getItem('editor-saved-maps');
     return stored ? JSON.parse(stored) : [];
   });
-  const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+  const [currentMapId, setCurrentMapId] = useState<string | null>(() => {
+    return searchParams.get('id') || null;
+  });
   const [grid, setGrid] = useState<Grid>(() => createGrid(DEFAULT_WIDTH, DEFAULT_HEIGHT));
   const [gridWidth, setGridWidth] = useState(DEFAULT_WIDTH);
   const [gridHeight, setGridHeight] = useState(DEFAULT_HEIGHT);
@@ -151,6 +153,31 @@ export function Editor() {
       } catch (e) {
         console.error('Failed to decode shared map:', e);
       }
+      return;
+    }
+
+    // Load existing map from ?id= param on mount
+    const urlId = searchParams.get('id');
+    if (urlId) {
+      const stored = localStorage.getItem('editor-saved-maps');
+      const maps: SavedMap[] = stored ? JSON.parse(stored) : [];
+      const map = maps.find(m => m.id === urlId);
+      if (map) {
+        try {
+          const data = JSON.parse(map.data);
+          const level = parseCommunityLevel(data as CommunityLevel);
+          const newGrid = createGrid(level.width, level.height);
+          for (const entity of level.entities) {
+            addEntity(newGrid, entity);
+          }
+          setGrid(newGrid);
+          setGridWidth(level.width);
+          setGridHeight(level.height);
+          setLevelName(level.name);
+        } catch {
+          console.error('Failed to load map from URL id');
+        }
+      }
     }
   }, []);
 
@@ -176,6 +203,16 @@ export function Editor() {
     navigate(`/play?map=${encoded}`);
   }
 
+  // Sync currentMapId to URL
+  useEffect(() => {
+    const currentUrlId = searchParams.get('id');
+    if (currentMapId && currentMapId !== currentUrlId) {
+      setSearchParams({ id: currentMapId }, { replace: true });
+    } else if (!currentMapId && currentUrlId) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [currentMapId]);
+
   // Resizable palette
   useEffect(() => {
     if (!isResizing) return;
@@ -199,12 +236,11 @@ export function Editor() {
     searchQuery ? patterns.filter(p => p.label.toLowerCase().includes(searchQuery.toLowerCase())) : patterns;
 
   // Debounced auto-save (uses refs to avoid re-triggering)
-  const hasInitialized = useRef(false);
+  const hasUserEdited = useRef(false);
   useEffect(() => {
-    // Skip auto-save on initial mount (prevents creating a new map on refresh)
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      // Only skip if there's no currentMapId (fresh page load)
+    // Skip auto-save until user has made an edit (prevents new map on refresh)
+    if (!hasUserEdited.current) {
+      hasUserEdited.current = true;
       if (!currentMapIdRef.current) return;
     }
 
